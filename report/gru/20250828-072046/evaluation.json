@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "all_tickers",
+        "best_epoch": 207,
+        "best_train_mse": 160.60935974121094,
+        "best_val_mse": 28.44244956970215,
+        "best_train_mae": 5.057250499725342,
+        "best_val_mae": 1.7838149070739746,
+        "best_train_rmse": 12.6731748090686,
+        "best_val_rmse": 5.3331463105471,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250828-072046/saved_weights/all_tickers/all_tickers_best-epoch207.pt",
+        "test_MSE": 400.34979248046875,
+        "test_MAE": 2.9135870933532715,
+        "test_RMSE": 20.008742901053747,
+        "best_train_mse_scaled": 4.144705144426553e-06,
+        "best_val_mse_scaled": 7.339891681112931e-07,
+        "test_MSE_scaled": 1.0331475095881615e-05,
+        "test_MAE_scaled": 0.0004680469282902777,
+        "test_RMSE_scaled": 0.0032142612052976677,
+        "epochs_run": 267,
+        "final_train_mse": 114.49459075927734,
+        "final_val_mse": 64.0096206665039,
+        "final_train_mse_scaled": 2.954660658360808e-06,
+        "final_val_mse_scaled": 1.6518397387699224e-06
+    }
+]
