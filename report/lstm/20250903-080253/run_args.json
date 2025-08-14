@@ -1,0 +1,31 @@
+{
+    "fnspid_csv_path": "~/Projects/finBert/FNSPID/Stock_news/nasdaq_external_data.csv",
+    "kaggle_csv_path": "~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
+    "prices_dir": "~/Projects/finBert/yf",
+    "tickers_path": "~/Projects/finBert/yf/tickers.json",
+    "sentiment_csv_path_in": "output/20250902-234959/sentiment_daily.csv",
+    "fine_tune_dir": "finetuned_finbert",
+    "fine_tune_load_path": null,
+    "train": true,
+    "data_source": "fnspid",
+    "ticker": [
+        "all-tickers"
+    ],
+    "sentiment_threshold": 0.8,
+    "market_tz": "America/New_York",
+    "market_close": "16:30",
+    "batch_size": 1,
+    "max_length": 512,
+    "lookback": 30,
+    "epochs": 100,
+    "patience": 30,
+    "use_bodies": false,
+    "load_dir": null,
+    "lr": 1e-05,
+    "dropout_rate": 0.0,
+    "weight_decay": 0.0,
+    "predict_returns": false,
+    "scale_method": "minmax",
+    "model": "finbert-lstm",
+    "seed": 1254
+}
