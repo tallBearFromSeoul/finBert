@@ -21,7 +21,8 @@ from torch.utils.data import Dataset, DataLoader
 # ----------------------------- Config & Utilities ----------------------------- #
 @dataclass(frozen=True)
 class Paths:
-    news_csv: str
+    fnspid_news_csv: str
+    kaggle_news_csv: str
     prices_csv: str
     out_sentiment_csv: str
 @dataclass(frozen=True)
@@ -253,7 +254,7 @@ def split_train_val(train_df: pd.DataFrame, val_ratio_within_train: float = 0.1)
     n = len(train_df)
     cut = int(math.floor(n * (1 - val_ratio_within_train)))
     return train_df.iloc[:cut].copy(), train_df.iloc[cut:].copy()
-def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback: int, batch_size: int = 1):
+def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback: int, batch_size: int = 32):
     """
     Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
     """
@@ -282,6 +283,45 @@ def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback
     dl_test = DataLoader(ds_test, batch_size=1, shuffle=False)
     return dl_train, dl_val, dl_test, y_scaler
 # ----------------------------- End-to-end ----------------------------------- #
+def load_fnspid_news(fnspid_news: str) -> pd.DataFrame:
+    dtypes = {
+        "Article_title": str,
+        "Stock_symbol": str
+    }
+    news_df = pd.read_csv(
+        fnspid_news,
+        usecols=["Date", "Article_title", "Stock_symbol"],
+        dtype=dtypes,
+        parse_dates=["Date"],
+        date_format="%Y-%m-%d"
+    )
+    news_df = news_df.rename(columns={"Article_title": "title", "Stock_symbol": "stock", "Date": "date"})
+    return news_df
+
+def load_kaggle_news(kaggle_news: str) -> pd.DataFrame:
+    news_df = pd.read_csv(
+        kaggle_news,
+        usecols=["title", "date", "stock"],
+        parse_dates=["date"]
+    )
+    return news_df
+
+def load_and_filter_news(fnspid_news: str, kaggle_news: str, data_source: str, start_date: pd.Timestamp, end_date: pd.Timestamp) -> pd.DataFrame:
+    if data_source == "fnspid":
+        news_df = load_fnspid_news(fnspid_news)
+    elif data_source == "kaggle":
+        news_df = load_kaggle_news(kaggle_news)
+    elif data_source == "both":
+        fnspid_df = load_fnspid_news(fnspid_news)
+        kaggle_df = load_kaggle_news(kaggle_news)
+        news_df = pd.concat([fnspid_df, kaggle_df], ignore_index=True).drop_duplicates(subset=["title"])
+    else:
+        raise ValueError(f"Invalid data_source: {data_source}. Choose 'fnspid', 'kaggle', or 'both'.")
+
+    news_df["date"] = pd.to_datetime(news_df["date"], errors="coerce")
+    news_df = news_df[(news_df["date"] > start_date) & (news_df["date"] < end_date)].dropna(subset=["date"])
+    return news_df
+
 def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
                          paths: Paths, s: Settings, schema: Schema) -> pd.DataFrame:
     calendar = build_calendar(prices_df, schema)
@@ -315,7 +355,7 @@ def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
     agg.to_csv(paths.out_sentiment_csv, index=False)
     logging.info(f"Wrote daily sentiment → {paths.out_sentiment_csv}")
     return agg
-def train_model(dl_train, dl_val, input_size: int, epochs: int = 100, patience: int = 20, lr: float = 1e-3,
+def train_model(dl_train, dl_val, input_size: int, epochs: int = 100, patience: int = 20, lr: float = 1e-4,
                 device: str = None):
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = LSTMRegressor(input_size=input_size).to(device)
@@ -389,11 +429,15 @@ def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, devi
 # ----------------------------------- Main ------------------------------------ #
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--news", default="~/Projects/finBert/FNSPID/Stock_news/All_external.csv",
-                    help="News CSV")
+    ap.add_argument("--fnspid-news", default="~/Projects/finBert/FNSPID/Stock_news/All_external.csv",
+                    help="FNSPID News CSV")
+    ap.add_argument("--kaggle-news", default="~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
+                    help="Kaggle News CSV (e.g., analyst_ratings_processed.csv)")
     ap.add_argument("--prices", default="~/Projects/finBert/FNSPID/Stock_price/full_history",
                     help="Prices directory (OHLCV CSVs per ticker)")
     ap.add_argument("--out-sentiment", required=True, help="Output path for daily sentiment CSV")
+    ap.add_argument("--data-source", default="kaggle", choices=["fnspid", "kaggle", "both"],
+                    help="Data source: 'fnspid', 'kaggle', or 'both' (merge)")
     ap.add_argument("--ticker", required=True, help="Ticker to train on (single stock, as in paper)")
     ap.add_argument("--market-tz", default="America/New_York")
     ap.add_argument("--market-close", default="16:00")
@@ -415,23 +459,10 @@ def main():
         titles_only=True,
         dedupe_titles=True,
     )
-    dtypes = {
-        "Article_title": str,
-        "Stock_symbol": str
-    }
     start_date = pd.Timestamp(2010, 1, 1, tz='UTC')  # Year, Month, Day, UTC timezone
-    end_date = pd.Timestamp(2020, 12, 31, tz='UTC')  # Year, Month, Day, UTC timezone
-    # Load and filter the DataFrame
-    news_df = pd.read_csv(
-        args.news,
-        usecols=["Date", "Article_title", "Stock_symbol"],
-        dtype=dtypes,
-        parse_dates=["Date"],
-        date_format="%Y-%m-%d"
-    )
-    # Ensure Date column is datetime
-    news_df["Date"] = pd.to_datetime(news_df["Date"], errors="coerce")
-    news_df = news_df[(news_df["Date"] > start_date) & (news_df["Date"] < end_date)].dropna(subset=["Date"])
+    end_date = pd.Timestamp(2020, 1, 1, tz='UTC')  # Align to paper's "up to 2019"
+    # Load and filter the news DataFrame
+    news_df = load_and_filter_news(args.fnspid_news, args.kaggle_news, args.data_source, start_date, end_date)
     logging.info(f"loaded news dataframe with {news_df.columns} and {news_df.shape}.")
     # Load and filter the prices DataFrame
     prices_df = pd.read_csv(
@@ -444,9 +475,9 @@ def main():
     prices_df = prices_df[(prices_df["date"] > start_date) & (prices_df["date"] < end_date)].dropna(subset=["date"])
     logging.info(f"loaded prices dataframe with {prices_df.columns} and {prices_df.shape}.")
     schema = Schema(
-        news_ticker="Stock_symbol",
-        news_time="Date",
-        news_title="Article_title",
+        news_ticker="stock",
+        news_time="date",
+        news_title="title",
         news_body=None,
         price_ticker=None,
         price_date="date",
@@ -457,20 +488,20 @@ def main():
         price_volume="volume",
     )
     # Step 1: sentiment per (ticker, day)
-    paths = Paths(args.news, args.prices, args.out_sentiment)
+    paths = Paths(args.fnspid_news, args.kaggle_news, args.prices, args.out_sentiment)
     sent_daily = make_daily_sentiment(news_df, prices_df, paths, s, schema)
     # Step 2: join with prices, build features for the requested ticker
     df_joined = prepare_joined_frame(sent_daily, prices_df, schema, args.ticker.upper())
     df_supervised, feat_cols = build_supervised_for_ticker(
         df_joined, ticker=args.ticker.upper(), lookback=args.lookback)
-    # Step 3: dataloaders (strict chronological 80/20 split; val is last 10% of train)
+    # Step 3: dataloaders (strict chronological 90/10 split; val is last 10% of train)
     dl_train, dl_val, dl_test, y_scaler = make_dataloaders_for_ticker(
-        df_supervised, feat_cols, lookback=args.lookback, batch_size=1
+        df_supervised, feat_cols, lookback=args.lookback, batch_size=32
     )
     # Step 4: train
     model, train_hist, val_hist = train_model(
         dl_train, dl_val, input_size=len(feat_cols),
-        epochs=args.epochs, patience=args.patience, lr=1e-3
+        epochs=args.epochs, patience=args.patience, lr=1e-4
     )
     # Step 5: evaluate with MSE/MAE/RMSE on test (inverse-transformed)
     metrics = evaluate(model, dl_test, y_scaler)

@@ -18,10 +18,12 @@ from typing import Iterable, List, Optional, Tuple, Dict
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
+from transformers import Trainer, TrainingArguments, DataCollatorWithPadding
 # ----------------------------- Config & Utilities ----------------------------- #
 @dataclass(frozen=True)
 class Paths:
-    news_csv: str
+    fnspid_news_csv: str
+    kaggle_news_csv: str
     prices_csv: str
     out_sentiment_csv: str
 @dataclass(frozen=True)
@@ -37,8 +39,8 @@ class Schema:
     price_low: Optional[str]
     price_close: str
     price_volume: Optional[str]
-@dataclass(frozen=True)
-class Settings:
+@dataclass
+class Settings:  # Non-frozen for dynamic updates
     market_tz: str = "America/New_York"
     market_close_str: str = "16:00"
     batch_size: int = 2 ** 13
@@ -103,25 +105,34 @@ class FinBertScorer:
     """
     ProsusAI/finbert off-the-shelf; returns p_pos, p_neg, p_neu, sentiment_score=p_pos-p_neg
     """
-    def __init__(self, batch_size: int, max_length: int):
-        model_id = "ProsusAI/finbert"
-        device = 0 if torch.cuda.is_available() else -1
-        self.batch_size = batch_size
-        self.pipe = pipeline(
-            "text-classification",
-            model=AutoModelForSequenceClassification.from_pretrained(model_id),
-            tokenizer=AutoTokenizer.from_pretrained(model_id),
-            device=device,
-            return_all_scores=True,
-            truncation=True
-        )
+    def __init__(self, batch_size: int, max_length: int, model=None):
+        if model is None:
+            model_id = "ProsusAI/finbert"
+            device = 0 if torch.cuda.is_available() else -1
+            self.pipe = pipeline(
+                "text-classification",
+                model=AutoModelForSequenceClassification.from_pretrained(model_id),
+                tokenizer=AutoTokenizer.from_pretrained(model_id),
+                device=device,
+                return_all_scores=True,
+                truncation=True
+            )
+        else:
+            self.pipe = pipeline(
+                "text-classification",
+                model=model,
+                tokenizer=model.tokenizer,
+                device=0 if torch.cuda.is_available() else -1,
+                return_all_scores=True,
+                truncation=True
+            )
         if torch.cuda.is_available() and hasattr(torch, "compile"):
-            self.pipe.model = torch.compile(self.pipe.model)  # Compile the model
+            self.pipe.model = torch.compile(self.pipe.model) # Compile the model
+        self.batch_size = batch_size
         self.max_length = max_length
     def score_texts(self, texts: List[str]) -> pd.DataFrame:
         if not texts:
             return pd.DataFrame(columns=["p_pos", "p_neg", "p_neu", "sentiment_score"])
-
         results = []
         self.pipe.model.eval()
         with torch.no_grad():
@@ -135,14 +146,85 @@ class FinBertScorer:
                     return_tensors="pt"
                 )
                 inputs = {k: v.to(self.pipe.device) for k, v in inputs.items()}
-                with autocast():  # Enable mixed precision
+                with autocast(): # Enable mixed precision
                     outputs = self.pipe.model(**inputs)
                 probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
                 for prob in probs:
                     p_pos, p_neg, p_neu = prob
                     results.append((p_pos, p_neg, p_neu, p_pos - p_neg))
-
         return pd.DataFrame(results, columns=["p_pos", "p_neg", "p_neu", "sentiment_score"])
+# ----------------------------- Fine-Tuning FinBERT with NSI ------------------ #
+class NSIDataset(Dataset):
+    def __init__(self, texts, labels, tokenizer, max_length):
+        self.texts = texts
+        self.labels = labels
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        encoding = self.tokenizer(
+            self.texts[idx],
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt"
+        )
+        item = {key: val.squeeze() for key, val in encoding.items()}
+        item['labels'] = torch.tensor(self.labels[idx])
+        return item
+
+def compute_nsi(prices_df: pd.DataFrame, schema: Schema, threshold: float = 0.01) -> pd.DataFrame:
+    prices = prices_df.copy()
+    prices["trading_date"] = pd.to_datetime(prices[schema.price_date]).dt.date
+    prices["return"] = (prices[schema.price_close] - prices[schema.price_open]) / prices[schema.price_open]
+    prices["NSI"] = np.where(prices["return"] > threshold, 1,
+                             np.where(prices["return"] < -threshold, 2, 0))  # Map: 1=pos (0), -1=neg (2), 0=neu (1)
+    return prices[["trading_date", "NSI"]]
+
+def fine_tune_finbert(news_df: pd.DataFrame, prices_df: pd.DataFrame, schema: Schema, s: Settings, prep: NewsPreprocessor):
+    # Compute NSI per day
+    nsi_df = compute_nsi(prices_df, schema)
+    # Map news to trading_date and label with NSI
+    news_df["trading_date"] = prep.compute_trading_date(news_df["published_utc"]).dt.date
+    labeled_df = pd.merge(news_df, nsi_df, on="trading_date", how="inner")
+    labeled_df = labeled_df.dropna(subset=["NSI"])
+    texts = prep.build_text(labeled_df).tolist()
+    labels = labeled_df["NSI"].astype(int).tolist()  # 0: neutral, 1: positive, 2: negative (align with FinBERT classes)
+    
+    # Load base FinBERT
+    model_id = "ProsusAI/finbert"
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModelForSequenceClassification.from_pretrained(model_id, num_labels=3)
+    
+    # Dataset
+    train_dataset = NSIDataset(texts, labels, tokenizer, s.max_length)
+    
+    # Trainer
+    training_args = TrainingArguments(
+        output_dir="./finbert_finetuned",
+        num_train_epochs=3,  # Paper suggests task-specific fine-tuning; adjust as needed
+        per_device_train_batch_size=16,
+        learning_rate=2e-5,
+        weight_decay=0.01,
+        evaluation_strategy="no",
+        save_strategy="no",
+        load_best_model_at_end=False,
+    )
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        data_collator=DataCollatorWithPadding(tokenizer),
+    )
+    trainer.train()
+    
+    # Save and return fine-tuned model
+    model.save_pretrained("./finbert_finetuned")
+    tokenizer.save_pretrained("./finbert_finetuned")
+    return AutoModelForSequenceClassification.from_pretrained("./finbert_finetuned"), tokenizer
 # ----------------------------- Pipeline Stages ------------------------------- #
 class NewsPreprocessor:
     def __init__(self, settings: Settings, schema: Schema, calendar: TradingCalendar):
@@ -253,7 +335,7 @@ def split_train_val(train_df: pd.DataFrame, val_ratio_within_train: float = 0.1)
     n = len(train_df)
     cut = int(math.floor(n * (1 - val_ratio_within_train)))
     return train_df.iloc[:cut].copy(), train_df.iloc[cut:].copy()
-def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback: int, batch_size: int = 1):
+def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback: int, batch_size: int = 32):
     """
     Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
     """
@@ -282,8 +364,56 @@ def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str], lookback
     dl_test = DataLoader(ds_test, batch_size=1, shuffle=False)
     return dl_train, dl_val, dl_test, y_scaler
 # ----------------------------- End-to-end ----------------------------------- #
+def load_fnspid_news(fnspid_news: str, use_bodies: bool) -> pd.DataFrame:
+    usecols = ["Date", "Article_title", "Stock_symbol"]
+    rename = {"Article_title": "title", "Stock_symbol": "stock", "Date": "date"}
+    if use_bodies:
+        usecols.append("Article_content")
+        rename["Article_content"] = "body"
+    dtypes = {
+        "Article_title": str,
+        "Stock_symbol": str,
+        "Article_content": str if use_bodies else None
+    }
+    news_df = pd.read_csv(
+        fnspid_news,
+        usecols=usecols,
+        dtype={k: v for k, v in dtypes.items() if v is not None},
+        parse_dates=["Date"],
+        date_format="%Y-%m-%d"
+    )
+    news_df = news_df.rename(columns=rename)
+    return news_df
+def load_kaggle_news(kaggle_news: str, use_bodies: bool) -> pd.DataFrame:
+    usecols = ["title", "date", "stock"]
+    if use_bodies:
+        usecols.append("text")  # Assuming 'text' is body column in primary dataset
+    news_df = pd.read_csv(
+        kaggle_news,
+        usecols=usecols,
+        parse_dates=["date"]
+    )
+    if use_bodies and "text" in news_df.columns:
+        news_df = news_df.rename(columns={"text": "body"})
+    elif use_bodies:
+        logging.warning("No body column found in Kaggle CSV; falling back to titles only.")
+    return news_df
+def load_and_filter_news(fnspid_news: str, kaggle_news: str, data_source: str, start_date: pd.Timestamp, end_date: pd.Timestamp, use_bodies: bool) -> pd.DataFrame:
+    if data_source == "fnspid":
+        news_df = load_fnspid_news(fnspid_news, use_bodies)
+    elif data_source == "kaggle":
+        news_df = load_kaggle_news(kaggle_news, use_bodies)
+    elif data_source == "both":
+        fnspid_df = load_fnspid_news(fnspid_news, use_bodies)
+        kaggle_df = load_kaggle_news(kaggle_news, use_bodies)
+        news_df = pd.concat([fnspid_df, kaggle_df], ignore_index=True).drop_duplicates(subset=["title"])
+    else:
+        raise ValueError(f"Invalid data_source: {data_source}. Choose 'fnspid', 'kaggle', or 'both'.")
+    news_df["date"] = pd.to_datetime(news_df["date"], errors="coerce")
+    news_df = news_df[(news_df["date"] > start_date) & (news_df["date"] < end_date)].dropna(subset=["date"])
+    return news_df
 def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
-                         paths: Paths, s: Settings, schema: Schema) -> pd.DataFrame:
+                         paths: Paths, s: Settings, schema: Schema, fine_tune: bool) -> pd.DataFrame:
     calendar = build_calendar(prices_df, schema)
     prep = NewsPreprocessor(s, schema, calendar)
     ticker_col = schema.news_ticker
@@ -296,7 +426,12 @@ def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
     news_df["text"] = prep.build_text(news_df)
     news_df = news_df.dropna(subset=[ticker_col, "published_utc"]).reset_index(drop=True)
     news_df = news_df[news_df["text"].str.len() > 0].reset_index(drop=True)
-    scorer = FinBertScorer(batch_size=s.batch_size, max_length=s.max_length)
+    model = None
+    if fine_tune:
+        model, tokenizer = fine_tune_finbert(news_df, prices_df, schema, s, prep)
+        scorer = FinBertScorer(s.batch_size, s.max_length, model=model)
+    else:
+        scorer = FinBertScorer(s.batch_size, s.max_length)
     score_df = scorer.score_texts(news_df["text"].tolist())
     assert len(score_df) == len(news_df), "Score length mismatch."
     news_df = pd.concat([news_df, score_df], axis=1)
@@ -315,7 +450,7 @@ def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
     agg.to_csv(paths.out_sentiment_csv, index=False)
     logging.info(f"Wrote daily sentiment → {paths.out_sentiment_csv}")
     return agg
-def train_model(dl_train, dl_val, input_size: int, epochs: int = 100, patience: int = 20, lr: float = 1e-3,
+def train_model(dl_train, dl_val, input_size: int, epochs: int = 100, patience: int = 20, lr: float = 1e-4,
                 device: str = None):
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = LSTMRegressor(input_size=input_size).to(device)
@@ -389,11 +524,15 @@ def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, devi
 # ----------------------------------- Main ------------------------------------ #
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--news", default="~/Projects/finBert/FNSPID/Stock_news/All_external.csv",
-                    help="News CSV")
+    ap.add_argument("--fnspid-news", default="~/Projects/finBert/FNSPID/Stock_news/All_external.csv",
+                    help="FNSPID News CSV")
+    ap.add_argument("--kaggle-news", default="~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
+                    help="Kaggle News CSV (e.g., analyst_ratings_processed.csv or us-equities-news-data CSV)")
     ap.add_argument("--prices", default="~/Projects/finBert/FNSPID/Stock_price/full_history",
                     help="Prices directory (OHLCV CSVs per ticker)")
     ap.add_argument("--out-sentiment", required=True, help="Output path for daily sentiment CSV")
+    ap.add_argument("--data-source", default="kaggle", choices=["fnspid", "kaggle", "both"],
+                    help="Data source: 'fnspid', 'kaggle', or 'both' (merge)")
     ap.add_argument("--ticker", required=True, help="Ticker to train on (single stock, as in paper)")
     ap.add_argument("--market-tz", default="America/New_York")
     ap.add_argument("--market-close", default="16:00")
@@ -402,8 +541,12 @@ def main():
     ap.add_argument("--lookback", type=int, default=60)
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--patience", type=int, default=20)
+    ap.add_argument("--fine-tune", action="store_true", help="Fine-tune FinBERT with NSI labels before scoring")
+    ap.add_argument("--use-bodies", action="store_true", help="Include article bodies in sentiment analysis if available")
     ap.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     args = ap.parse_args()
+    if args.data_source == "kaggle" and args.kaggle_news is None:
+        raise ValueError("--kaggle-news required for data-source 'kaggle' or 'both'")
     logging.basicConfig(level=getattr(logging, args.log_level, logging.INFO),
                         format="%(asctime)s | %(levelname)s | %(message)s")
     # Settings for paper alignment
@@ -412,26 +555,13 @@ def main():
         market_close_str=args.market_close,
         batch_size=args.batch_size,
         max_length=args.max_length,
-        titles_only=True,
+        titles_only=not args.use_bodies,
         dedupe_titles=True,
     )
-    dtypes = {
-        "Article_title": str,
-        "Stock_symbol": str
-    }
-    start_date = pd.Timestamp(2010, 1, 1, tz='UTC')  # Year, Month, Day, UTC timezone
-    end_date = pd.Timestamp(2020, 12, 31, tz='UTC')  # Year, Month, Day, UTC timezone
-    # Load and filter the DataFrame
-    news_df = pd.read_csv(
-        args.news,
-        usecols=["Date", "Article_title", "Stock_symbol"],
-        dtype=dtypes,
-        parse_dates=["Date"],
-        date_format="%Y-%m-%d"
-    )
-    # Ensure Date column is datetime
-    news_df["Date"] = pd.to_datetime(news_df["Date"], errors="coerce")
-    news_df = news_df[(news_df["Date"] > start_date) & (news_df["Date"] < end_date)].dropna(subset=["Date"])
+    start_date = pd.Timestamp(2010, 1, 1, tz='UTC') # Year, Month, Day, UTC timezone
+    end_date = pd.Timestamp(2020, 1, 1, tz='UTC') # Align to paper's "up to 2019"
+    # Load and filter the news DataFrame
+    news_df = load_and_filter_news(args.fnspid_news, args.kaggle_news, args.data_source, start_date, end_date, args.use_bodies)
     logging.info(f"loaded news dataframe with {news_df.columns} and {news_df.shape}.")
     # Load and filter the prices DataFrame
     prices_df = pd.read_csv(
@@ -440,14 +570,14 @@ def main():
         date_format="%Y-%m-%d"
     )
     prices_df["date"] = pd.to_datetime(prices_df["date"], errors="coerce")
-    prices_df["date"] = _ensure_utc(prices_df["date"], s.assume_news_timezone)  # Convert to UTC
+    prices_df["date"] = _ensure_utc(prices_df["date"], s.assume_news_timezone) # Convert to UTC
     prices_df = prices_df[(prices_df["date"] > start_date) & (prices_df["date"] < end_date)].dropna(subset=["date"])
     logging.info(f"loaded prices dataframe with {prices_df.columns} and {prices_df.shape}.")
     schema = Schema(
-        news_ticker="Stock_symbol",
-        news_time="Date",
-        news_title="Article_title",
-        news_body=None,
+        news_ticker="stock",
+        news_time="date",
+        news_title="title",
+        news_body="body" if "body" in news_df.columns else None,
         price_ticker=None,
         price_date="date",
         price_open="open",
@@ -457,20 +587,20 @@ def main():
         price_volume="volume",
     )
     # Step 1: sentiment per (ticker, day)
-    paths = Paths(args.news, args.prices, args.out_sentiment)
-    sent_daily = make_daily_sentiment(news_df, prices_df, paths, s, schema)
+    paths = Paths(args.fnspid_news, args.kaggle_news, args.prices, args.out_sentiment)
+    sent_daily = make_daily_sentiment(news_df, prices_df, paths, s, schema, args.fine_tune)
     # Step 2: join with prices, build features for the requested ticker
     df_joined = prepare_joined_frame(sent_daily, prices_df, schema, args.ticker.upper())
     df_supervised, feat_cols = build_supervised_for_ticker(
         df_joined, ticker=args.ticker.upper(), lookback=args.lookback)
-    # Step 3: dataloaders (strict chronological 80/20 split; val is last 10% of train)
+    # Step 3: dataloaders (strict chronological 90/10 split; val is last 10% of train)
     dl_train, dl_val, dl_test, y_scaler = make_dataloaders_for_ticker(
-        df_supervised, feat_cols, lookback=args.lookback, batch_size=1
+        df_supervised, feat_cols, lookback=args.lookback, batch_size=32
     )
     # Step 4: train
     model, train_hist, val_hist = train_model(
         dl_train, dl_val, input_size=len(feat_cols),
-        epochs=args.epochs, patience=args.patience, lr=1e-3
+        epochs=args.epochs, patience=args.patience, lr=1e-4
     )
     # Step 5: evaluate with MSE/MAE/RMSE on test (inverse-transformed)
     metrics = evaluate(model, dl_test, y_scaler)
@@ -478,6 +608,5 @@ def main():
         f"Test MSE={metrics['test_MSE']:.6f} | MAE={metrics['test_MAE']:.6f} | RMSE={metrics['test_RMSE']:.6f}")
     if len(train_hist) and len(val_hist):
         logging.info(f"Final Train MSE={train_hist[-1]:.6f} | Final Val MSE={val_hist[-1]:.6f}")
-
 if __name__ == "__main__":
     main()
