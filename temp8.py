@@ -1,3 +1,197 @@
+"""
+News‑Sentiment–Driven Stock Forecasting Pipeline
+================================================
+
+Overview
+--------
+This script builds a full pipeline that:
+1) ingests equity news headlines (optionally bodies) and OHLCV price data,
+2) computes *daily* sentiment signals using FinBERT (optionally fine‑tuned via a simple
+   market‑label heuristic called NSI),
+3) merges those signals with prices,
+4) constructs rolling sequences, and
+5) trains an LSTM regressor (optionally hybridized with ARIMA) to predict the next
+   day's target (close *or* return), with evaluation and artifacts saved to disk.
+
+**What are we training for?**
+- A sequence model (`LSTMRegressor`) that predicts the **next‑day target** for a given ticker:
+  - If `--predict-returns` is **off** (default): the target is **Close** (price level).
+  - If `--predict-returns` is **on**: the target is the **daily return** `(Close - Open) / Open`.
+- If `--use-arima` is **on**, we train the LSTM to predict **ARIMA residuals** and add the ARIMA
+  forecast back at inference (hybrid ARIMA+LSTM). Otherwise, the LSTM predicts the target directly.
+
+High‑Level Code Flow
+--------------------
+1. **Argument parsing** (see *CLI Arguments* below).
+2. **Paths & settings** are initialized; a timestamped `output/<runtime>/` directory is created.
+3. **News loading & filtering**:
+   - Load from `--data-source` (`fnspid`, `kaggle`, or `both`), optional merge with `--x-csv`.
+   - Filter to a study window (default: `2010-01-01` to `2020-01-01` UTC).
+4. **Trading calendar** is built from the price file(s) to map news → trading days.
+5. **Daily sentiment**:
+   - Normalize tickers/times, dedupe titles, construct text (title or title+body).
+   - Score texts with **FinBERT** (optionally *fine‑tuned* using NSI labels).
+   - Aggregate per (ticker, trading_date): mean sentiment and count `N_t`.
+   - Save to CSV (`--out-sentiment` or default under `output/<runtime>/`).
+6. **Per‑ticker supervised frame**:
+   - Join daily sentiment with OHLCV.
+   - Build features (SentimentScore + available OHLCV) and the raw target (Close or Return).
+7. **Train/val/test splits & scaling**:
+   - Chronological split (90% train_all, last 10% test; last 10% of train_all is val).
+   - MinMax scaling for X on **train only** and applied to all splits.
+   - If hybrid: fit ARIMA on train, use fitted/forecasts to form residual targets; keep ARIMA preds
+     to reconstruct price/return scale for metrics later.
+   - Scale the supervised target (`y`) on **train only** and apply to val/test.
+   - Build rolling sequence datasets with lookback `--lookback`.
+8. **Training loop**:
+   - Optimize **MSE on the scaled target**.
+   - Also compute **price/return‑scale metrics** by inverse scaling and (if hybrid) adding ARIMA back.
+   - **Early stopping** & **best checkpoint selection** are based on **validation MSE on the original
+     target scale** (price or return).
+   - Save best weights to `output/<runtime>/saved_weights/<TICKER>/best-epochXXX.pt`.
+9. **Evaluation**:
+   - Predict on test, reconstruct original scale, and report MSE/MAE/RMSE (also keep scaled metrics).
+   - Persist per‑epoch curves and a summary CSV (`evaluation.csv`).
+
+Pipeline Components
+-------------------
+- **Dataclasses & Utilities**
+  - `Paths`: file locations for news, prices, and sentiment output.
+  - `Schema`: column names for news and price tables.
+  - `Settings`: runtime options (market timezone/close, FinBERT batch size & max_length, etc.).
+  - Time helpers: `_ensure_utc`, `_coerce_datetime` to standardize timestamps to UTC.
+  - `_normalize_ticker`: forces consistent ticker casing.
+
+- **TradingCalendar**
+  - Built from the price table’s unique dates.
+  - Provides `next_trading_day(d)` used to map news timestamps to trading days (e.g., post‑close
+    news is mapped to the next trading day, then snapped to an actual trading date by binary search).
+
+- **NewsPreprocessor**
+  - Builds the text field: `title` or `title + body` depending on `--use-bodies`.
+  - Converts news timestamps to UTC, then to market local time (`--market-tz`), shifts items **after
+    `--market-close`** to the next day, and maps to the next trading day via `TradingCalendar`.
+
+- **FinBertScorer**  *(tokenizer fix applied when fine‑tuning)*
+  - Wraps a Hugging Face `pipeline("text-classification")`.
+  - **Constructor**: `FinBertScorer(batch_size, max_length, model=None, tokenizer=None)`.
+    - If `model`/`tokenizer` are not supplied, loads `ProsusAI/finbert`.
+    - **max_length is clamped** to the tokenizer’s `model_max_length` to respect BERT’s limit.
+    - Selects GPU if available; uses mixed precision (`torch.cuda.amp.autocast`) in scoring.
+  - **Output** per text: `(p_pos, p_neg, p_neu, sentiment_score)`, where
+    `sentiment_score = p_pos - p_neg`.
+    - **Note**: This assumes the model’s logit order aligns with `[pos, neg, neu]`. If a custom
+      checkpoint changes label ordering, adjust mapping via `id2label`.
+
+- **NSI (News‑Sentiment Index) & Fine‑Tuning**
+  - `compute_nsi`: derives a **daily market label** from prices using a threshold on daily return:
+    - return > +threshold → **pos (0)**; return < −threshold → **neg (1)**; otherwise **neu (2)**.
+  - `fine_tune_finbert`:
+    - Aligns each news item to a trading day, joins with NSI labels, builds a dataset of
+      `(text, NSI)` pairs.
+    - Fine‑tunes `ProsusAI/finbert` for 3 labels with HF `Trainer`.
+    - Returns the **fine‑tuned model and tokenizer**, which are then passed to `FinBertScorer`
+      *(this is the tokenizer fix)*.
+
+- **Daily Sentiment Aggregation**
+  - Per (ticker, trading_date) group:
+    - `SentimentScore`: mean of `sentiment_score`.
+    - `N_t`: number of items.
+    - `p_pos_mean`, `p_neg_mean`, `p_neu_mean`: mean class probabilities.
+  - Missing days get `SentimentScore=0.0` and `N_t=0` during the join to prices.
+
+- **Supervised Dataset & Features**
+  - `prepare_joined_frame`: merges daily sentiment with OHLCV; renames to `Open/High/Low/Close/Volume`.
+  - `build_supervised_for_ticker`: selects features **[`SentimentScore`, available OHLCV, incl. Close]**
+    and sets the **raw target**:
+    - Close (default) or Return if `--predict-returns`.
+
+- **Splits, Scaling & Loaders**
+  - `make_dataloaders_for_ticker`:
+    - Chronological split (train/val/test).
+    - Fit `MinMaxScaler` on **train only** for X and y (y is either raw target or residual).
+    - If hybrid ARIMA:
+      - Fit ARIMA(1,1,2) on train (and train_all for test) to produce preds.
+      - Set y to **residuals** for training/validation/test.
+    - Construct rolling sequence datasets (lookback = `--lookback`).
+    - Returns loaders, scalers, ARIMA slices, and original targets for metric reconstruction.
+
+- **Model**
+  - `LSTMRegressor`: 2 stacked LSTMs (100 hidden units each) → FC(25) → FC(1) with dropout and ReLU.
+  - Input shape: `(batch, time, features)`.
+
+- **Training**
+  - Optimize **MSE on the scaled target**.
+  - Per epoch, also compute **original‑scale metrics** by inverse scaling (and, if hybrid, adding ARIMA):
+    - **MSE**, **MAE**, **RMSE** on price or return scale (depending on `--predict-returns`).
+  - **Early stopping** & **best model selection** use **validation MSE on original scale**.
+  - Best weights are saved; per‑epoch curves (scaled and original‑scale) are written to CSV.
+
+- **Evaluation**
+  - Test set predictions are reconstructed to original scale and evaluated with MSE/MAE/RMSE.
+  - Scaled metrics are also reported for debugging/reference.
+
+- **News IO**
+  - `load_fnspid_news` / `load_kaggle_news`: load columns, harmonize names, optionally include body.
+  - `load_and_filter_news`: choose source(s), filter by date range, optionally merge X/Twitter CSV
+    (`date,text,stock` → `date,title,stock`).
+
+CLI Arguments (Selected)
+-----------------------
+- `--fnspid-news`, `--kaggle-news`: paths to news CSVs.
+- `--prices`: directory with per‑ticker OHLCV CSVs.
+- `--data-source {fnspid,kaggle,both}`: which news source(s) to use.
+- `--ticker TICKER | all-tickers`: run one ticker or iterate over all CSVs in `--prices`.
+- `--out-sentiment`: where to write aggregated sentiment (if generated).
+- `--sentiment-dir`: if provided, **load** precomputed daily sentiment and skip FinBERT scoring.
+- `--market-tz`, `--market-close`: control trading‑day mapping (after‑close → next day).
+- `--batch-size`, `--max-length`: FinBERT scoring settings (max_length is clamped to model limit).
+- `--use-bodies`: include article bodies in the sentiment text.
+- `--fine-tune`: enable **NSI‑supervised fine‑tuning** of FinBERT before scoring news.
+- `--use-arima`: enable **hybrid ARIMA+LSTM** (train on residuals; add ARIMA back at inference).
+- `--predict-returns`: predict returns instead of Close price.
+- `--lookback`: sequence length for LSTM.
+- `--epochs`, `--patience`, `--dropout-rate`, `--weight-decay`: LSTM training hyperparameters.
+- `--load-dir`: optionally warm‑start from existing `.pt/.pth` (file or directory).
+- `--log-level`, `--log-batches-debug`: verbosity controls.
+- `--x-csv`: optional social stream (`date,text,stock`) to append as additional titles.
+
+Outputs
+-------
+- `output/<runtime>/sentiment_daily.csv`   : daily per‑ticker sentiment aggregates.
+- `output/<runtime>/saved_weights/<TICKER>/best-epochXXX.pt` : best LSTM weights per ticker.
+- `output/<runtime>/<TICKER>_training_curve.csv` : per‑epoch curves (scaled + original‑scale).
+- `output/<runtime>/evaluation.csv`        : per‑ticker summary with best/ final and test metrics.
+
+Assumptions & Notes
+-------------------
+- **Tokenizer fix applied**: when fine‑tuning is enabled, `fine_tune_finbert` returns `(model, tokenizer)`
+  and both are passed into `FinBertScorer(model=..., tokenizer=...)`. Off‑the‑shelf scoring constructs
+  both internally.
+- FinBERT class‑probability **label order may vary** between checkpoints. This code **assumes**
+  `(p_pos, p_neg, p_neu)` in that index order; verify `id2label` if using a custom model.
+- BERT’s practical max sequence length is typically **512 tokens**; `max_length` is clamped to the
+  tokenizer’s configured limit to avoid excessive truncation or OOM.
+- `N_t` (item count) is computed and saved; features currently include `SentimentScore` and available
+  OHLCV. Add `N_t` to features in `build_supervised_for_ticker` if desired.
+- Metrics labeled “price‑scale” in logs/CSV mean **original target scale**; when `--predict-returns`
+  is on, this refers to **return scale**.
+- Splits are **chronological**, no shuffle, to respect time order.
+
+Quickstart
+----------
+Example (single ticker, titles only, Close prediction, hybrid ARIMA+LSTM):
+
+    python temp8.py --data-source kaggle --ticker AAPL \\
+        --prices ~/Projects/finBert/FNSPID/Stock_price/full_history \\
+        --kaggle-news ~/Projects/finBert/kaggle/analyst_ratings_processed.csv \\
+        --use-arima --lookback 60 --epochs 100
+
+With fine‑tuned FinBERT (NSI labels) and bodies:
+
+    python temp8.py --data-source both --ticker MSFT --use-bodies --fine-tune
+
+"""
 from __future__ import annotations
 # ---------------- Runtime stamp for output names ---------------- #
 from datetime import datetime
@@ -112,31 +306,32 @@ class FinBertScorer:
     """
     ProsusAI/finbert off-the-shelf; returns p_pos, p_neg, p_neu, sentiment_score=p_pos-p_neg
     """
-    def __init__(self, batch_size: int, max_length: int, model=None):
+    def __init__(self, batch_size: int, max_length: int, model=None, tokenizer=None):
+        device = 0 if torch.cuda.is_available() else -1
         if model is None:
             model_id = "ProsusAI/finbert"
-            device = 0 if torch.cuda.is_available() else -1
-            self.pipe = pipeline(
-                "text-classification",
-                model=AutoModelForSequenceClassification.from_pretrained(model_id),
-                tokenizer=AutoTokenizer.from_pretrained(model_id),
-                device=device,
-                return_all_scores=True,
-                truncation=True
-            )
+            mdl = AutoModelForSequenceClassification.from_pretrained(model_id)
+            tok = AutoTokenizer.from_pretrained(model_id)
         else:
-            self.pipe = pipeline(
-                "text-classification",
-                model=model,
-                tokenizer=model.tokenizer,
-                device=0 if torch.cuda.is_available() else -1,
-                return_all_scores=True,
-                truncation=True
-            )
+            mdl = model
+            # If caller didn’t pass a tokenizer, fall back to matching one
+            tok = tokenizer or AutoTokenizer.from_pretrained("ProsusAI/finbert")
+        self.pipe = pipeline(
+            "text-classification",
+            model=mdl,
+            tokenizer=tok,
+            device=device,
+            return_all_scores=True,
+            truncation=True
+        )
         if torch.cuda.is_available() and hasattr(torch, "compile"):
             self.pipe.model = torch.compile(self.pipe.model) # Compile the model
         self.batch_size = batch_size
-        self.max_length = max_length
+        # clamp to tokenizer's configured limit
+        try:
+            self.max_length = min(max_length, getattr(self.pipe.tokenizer, "model_max_length", max_length) or max_length)
+        except Exception:
+            self.max_length = max_length
     def score_texts(self, texts: List[str]) -> pd.DataFrame:
         if not texts:
             return pd.DataFrame(columns=["p_pos", "p_neg", "p_neu", "sentiment_score"])
@@ -763,7 +958,7 @@ def make_daily_sentiment(news_df: pd.DataFrame, prices_df: pd.DataFrame,
     model = None
     if fine_tune:
         model, tokenizer = fine_tune_finbert(news_df, prices_df, schema, s, prep)
-        scorer = FinBertScorer(s.batch_size, s.max_length, model=model)
+        scorer = FinBertScorer(s.batch_size, s.max_length, model=model, tokenizer=tokenizer)
     else:
         scorer = FinBertScorer(s.batch_size, s.max_length)
     score_df = scorer.score_texts(news_df["text"].tolist())
