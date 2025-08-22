@@ -6,7 +6,9 @@ import pandas as pd
 import os
 
 from components.sentiment_generator import SentimentGenerator
-from components.types import Paths, Schema, Settings
+from components.data_paths import DataPaths
+from components.schema import Schema
+from components.settings import Settings
 from utils.logger import Logger
 
 class Pipeline:
@@ -62,8 +64,10 @@ class Pipeline:
             tickers = [args.ticker.upper()]
 
         out_sentiment_csv = out_root / "sentiment_daily.csv"
-        paths = Paths(fnspid_csv_path, kaggle_csv_path, prices_dir, out_sentiment_csv)
-        SentimentGenerator(tickers, paths, sentiment_csv_path_in).load_or_generate(article_df, settings, schema,start_date, end_date, args.fine_tune)
+        data_paths = DataPaths(fnspid_csv_path, kaggle_csv_path, prices_dir, out_sentiment_csv)
+        sentiment_generator = SentimentGenerator(
+            tickers, data_paths, settings, schema, sentiment_csv_path_in, article_df,
+            start_date, end_date, args.fine_tune)
 
     @staticmethod
     def _list_all_tickers(prices_dir: Path) -> List[str]:
@@ -93,22 +97,17 @@ class Pipeline:
             parse_dates=["Date"],
             date_format="%Y-%m-%d"
         )
-        article_df = article_df.rename(columns=rename)
-        return article_df
+        return article_df.rename(columns=rename)
 
     @staticmethod
     def load_kaggle_news(kaggle_news: str, use_bodies: bool) -> pd.DataFrame:
         usecols = ["title", "date", "stock"]
-        if use_bodies:
-            usecols.append("text") # Assuming 'text' is body column in primary dataset
         article_df = pd.read_csv(
             kaggle_news,
             usecols=usecols,
             parse_dates=["date"]
         )
-        if use_bodies and "text" in article_df.columns:
-            article_df = article_df.rename(columns={"text": "body"})
-        elif use_bodies:
+        if use_bodies:
             Logger.warning("No body column found in Kaggle CSV; falling back to titles only.")
         return article_df
 
@@ -127,7 +126,7 @@ class Pipeline:
         return article_df
 
     @staticmethod
-    def argparse() -> Tuple[argparse.Namespace, datetime]:
+    def argparse() -> Tuple[argparse.Namespace, str]:
         runtime = datetime.now().strftime("%Y%m%d-%H%M%S")
         ap = argparse.ArgumentParser()
         ap.add_argument(

@@ -1,45 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass
 from datetime import date
-from pathlib import Path
-from typing import List, Optional
+from typing import List
 import pandas as pd
 
-@dataclass(frozen=True, slots=True)
-class Paths:
-    fnspid_article_csv_path: Path
-    kaggle_article_csv_path: Path
-    prices_csv_path: Path
-    out_sentiment_csv_path: Path
-
-    def __post_init__(self):
-        for p in (self.fnspid_article_csv_path, self.kaggle_article_csv_path, self.prices_csv_path):
-            if not p.exists():
-                raise FileNotFoundError(f"Price file not found: {p}")
-
-@dataclass(frozen=True, slots=True)
-class Schema:
-    article_ticker: str
-    article_time: str
-    article_title: str
-    article_body: Optional[str]
-    price_date: str
-    price_open: str
-    price_high: str
-    price_low: str
-    price_close: str
-    price_volume: str
-
-@dataclass(frozen=True, slots=True)
-class Settings: # Non-frozen for dynamic updates
-    market_tz: str
-    market_close_str: str
-    batch_size: int
-    max_length: int # tokenizer truncation
-    text_joiner: str = " "
-    lower_case_tickers: bool = False
-    dedupe_titles: bool = True
-    titles_only: bool = True # paper used titles; set False to include body too
+from components.schema import Schema
 
 class TradingCalendar:
     """

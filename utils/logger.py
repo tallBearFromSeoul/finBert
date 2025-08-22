@@ -118,7 +118,3 @@ class Logger:
         cls._ensure_configured()
         context = cls._get_context()
         cls._logger.fatal(f"{context} {msg}", *args, **kwargs)
-
-
-if __name__ == "__main__":
-    Lo

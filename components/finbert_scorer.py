@@ -9,7 +9,9 @@ import pandas as pd
 import torch
 
 from components.article_preprocessor import ArticlePreprocessor
-from components.types import Schema, Settings
+from components.schema import Schema
+from components.settings import Settings
+from utils.logger import Logger
 
 class NSIDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length):
@@ -35,7 +37,13 @@ class FinBertScorer:
     ProsusAI/finbert off-the-shelf; returns p_pos, p_neg, p_neu, sentiment_score=p_pos-p_neg
     """
     def __init__(self, batch_size: int, max_length: int, model=None, tokenizer=None):
-        device = 0 if torch.cuda.is_available() else -1
+        self.device = torch.device("cuda") if torch.cuda.is_available() else (
+            torch.device("mps")
+            if (torch.backends.mps.is_available() and torch.backends.mps.is_built())
+            else torch.device("cpu"))
+
+        Logger.info(f"Using device {self.device}")
+
         if model is None:
             model_id = "ProsusAI/finbert"
             mdl = AutoModelForSequenceClassification.from_pretrained(model_id)
@@ -48,8 +56,8 @@ class FinBertScorer:
             "text-classification",
             model=mdl,
             tokenizer=tok,
-            device=device,
-            return_all_scores=True,
+            device=self.device,
+            top_k=None,
             truncation=True
         )
         if torch.cuda.is_available() and hasattr(torch, "compile"):
@@ -76,8 +84,12 @@ class FinBertScorer:
                     return_tensors="pt"
                 )
                 inputs = {k: v.to(self.pipe.device) for k, v in inputs.items()}
-                with autocast(device_type="cuda"): # Enable mixed precision
-                    outputs = self.pipe.model(**inputs)
+                if self.device.type == "cuda":
+                    with autocast(device_type="cuda"): # Enable mixed precision
+                        outputs = self.pipe.model(**inputs)
+                else:
+                    with torch.no_grad():
+                        outputs = self.pipe.model(**inputs)
                 probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
                 for prob in probs:
                     p_pos, p_neg, p_neu = prob
