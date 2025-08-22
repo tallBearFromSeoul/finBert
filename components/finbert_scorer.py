@@ -1,5 +1,5 @@
 from torch.amp import autocast
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification,
                           DataCollatorWithPadding, Trainer, TrainingArguments, pipeline)

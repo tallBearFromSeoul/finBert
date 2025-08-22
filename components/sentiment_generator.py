@@ -3,7 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 import pandas as pd
-import os
 
 from components.article_preprocessor import ArticlePreprocessor
 from components.finbert_scorer import FinBertScorer

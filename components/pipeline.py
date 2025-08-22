@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import argparse
+import numpy as np
 import pandas as pd
 import os
 
@@ -9,7 +10,11 @@ from components.sentiment_generator import SentimentGenerator
 from components.data_paths import DataPaths
 from components.schema import Schema
 from components.settings import Settings
+from components.train_data_loader import TrainDataLoader, TrainDataPreprocessor
+from components.train import evaluate, train_model
+from utils.datetime_utils import ensure_utc
 from utils.logger import Logger
+from utils.pathlib_utils import ensure_dir
 
 class Pipeline:
     def __init__(self):
@@ -20,11 +25,11 @@ class Pipeline:
         kaggle_csv_path = Path(os.path.expanduser(args.kaggle_csv_path)).resolve()
         sentiment_csv_path_in = Path(os.path.expanduser(args.sentiment_csv_path_in)).resolve() \
             if args.sentiment_csv_path_in else None
-        out_root = Pipeline._ensure_dir(Path("output") / runtime)
+        out_root = ensure_dir(Path("output") / runtime)
 
         load_dir = Path(os.path.expanduser(args.load_dir)).resolve() if args.load_dir else None
         # Output layout
-        saved_root = Pipeline._ensure_dir(out_root / "saved_weights")
+        saved_root = ensure_dir(out_root / "saved_weights")
         eval_csv_path = out_root / "evaluation.csv"
 
         # Settings for paper alignment
@@ -68,15 +73,150 @@ class Pipeline:
         sentiment_generator = SentimentGenerator(
             tickers, data_paths, settings, schema, sentiment_csv_path_in, article_df,
             start_date, end_date, args.fine_tune)
+        self.train(ticker, sentiment_generator.daily_sentiment, prices_dir, settings, schema,
+                   start_date, end_date, args, out_root, saved_root, eval_csv_path, load_dir)
+
+    @staticmethod
+    def train(
+        tickers_: List[str], daily_sentiment_: pd.DataFrame, prices_dir_: Path,
+        settings_: Settings, schema_: Schema, start_date_: datetime, end_date_: datetime,
+        args_: argparse.Namespace, out_root_: Path, saved_root_: Path, eval_csv_path_: Path,
+        load_dir_: Optional[Path]):
+        eval_rows: List[Dict[str, object]] = []
+        for ticker in tickers_:
+            Logger.info(f"Training predictor for ticker: {ticker}")
+            price_path = prices_dir_ / f"{ticker}.csv"
+            if not price_path.exists():
+                Logger.warning(f"Skipping {ticker}: price file not found ({price_path})")
+                continue
+            prices_df = pd.read_csv(price_path, parse_dates=["date"], date_format="%Y-%m-%d")
+            prices_df["date"] = ensure_utc(prices_df["date"])
+            prices_df = prices_df[(prices_df["date"] > start_date_) & (prices_df["date"] < end_date_)].dropna(subset=["date"])
+            Logger.info(f"Loaded prices for {ticker} with columns={list(prices_df.columns)} shape={prices_df.shape}.")
+            # Join
+            df_joined = TrainDataPreprocessor.prepare_joined_frame(daily_sentiment_, prices_df, schema_, ticker)
+            df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
+                df_joined, ticker=ticker, lookback=args_.lookback, predict_returns=args_.predict_returns)
+            (dl_train, dl_val, dl_test, y_scaler, is_hybrid,
+             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
+             original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
+                df_supervised, feat_cols, lookback=args_.lookback, use_arima=args_.use_arima, batch_size=args_.batch_size)
+
+            # Prepare saved weights dir for this ticker
+            ticker_save_dir = ensure_dir(saved_root_ / ticker)
+            # Resolve initial load path if provided
+            resolved_load_path = None
+            if load_dir_ is not None:
+                cand = Pipeline.find_weight_file_for_ticker(load_dir_, ticker)
+                if cand:
+                    resolved_load_path = cand
+                else:
+                    Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
+            # Train (now passes y_scaler, returns both scaled and price metrics)
+            model, train_hist, val_hist, best_info, price_hist = train_model(
+                dl_train, dl_val, input_size=len(feat_cols),
+                is_hybrid=is_hybrid,
+                arima_pred_train_slice=arima_pred_train_slice,
+                arima_pred_val_slice=arima_pred_val_slice,
+                original_y_train=original_y_train,
+                original_y_val=original_y_val,
+                epochs=args_.epochs, patience=args_.patience, lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                device=None, # auto-select
+                save_dir=ticker_save_dir,
+                ticker=ticker,
+                load_path=resolved_load_path,
+                log_per_batch_debug=args_.log_batches_debug,
+                y_scaler=y_scaler
+            )
+            # Evaluate
+            metrics = evaluate(model, dl_test, y_scaler, is_hybrid, arima_pred_test_slice, original_y_test)
+            Logger.info(
+                f"[{ticker}] Test (price) MSE={metrics['test_MSE']:.6f} | MAE={metrics['test_MAE']:.6f} | RMSE={metrics['test_RMSE']:.6f} "
+                f"(scaled MSE={metrics['test_MSE_scaled']:.6f})"
+            )
+            if len(train_hist) and len(val_hist):
+                Logger.info(
+                    f"[{ticker}] Final (price) Train MSE={price_hist['train_mse'][-1]:.6f} | "
+                    f"Val MSE={price_hist['val_mse'][-1]:.6f} "
+                    f"(scaled Train MSE={train_hist[-1]:.6f} | Val MSE={val_hist[-1]:.6f})"
+                )
+            Logger.info(
+                f"[{ticker}] Best epoch={best_info['best_epoch']} | "
+                f"Best (price) Train MSE={best_info['best_train_mse']:.6f} | "
+                f"Best (price) Val MSE={best_info['best_val_mse']:.6f} | Saved at={best_info['best_path']}"
+            )
+            # Richer training curve CSV
+            pd.DataFrame({
+                "epoch": np.arange(1, len(train_hist) + 1, dtype=int),
+                # scaled losses (training objective)
+                "train_mse_scaled": train_hist,
+                "val_mse_scaled": val_hist,
+                # price-scale metrics (comparable to test)
+                "train_mse_price": price_hist["train_mse"],
+                "val_mse_price": price_hist["val_mse"],
+                "train_mae_price": price_hist["train_mae"],
+                "val_mae_price": price_hist["val_mae"],
+                "train_rmse_price": price_hist["train_rmse"],
+                "val_rmse_price": price_hist["val_rmse"],
+            }).to_csv(out_root_ / f"{ticker}_training_curve.csv", index=False)
+            # Evaluation rows (consistent price-scale metrics, plus scaled for reference)
+            eval_rows.append({
+                "ticker": ticker,
+                "best_epoch": best_info["best_epoch"],
+                # canonical (price-scale)
+                "best_train_mse": best_info["best_train_mse"],
+                "best_val_mse": best_info["best_val_mse"],
+                "best_train_mae": best_info["best_train_mae"],
+                "best_val_mae": best_info["best_val_mae"],
+                "best_train_rmse": best_info["best_train_rmse"],
+                "best_val_rmse": best_info["best_val_rmse"],
+                "saved_weights_path": best_info["best_path"],
+                "test_MSE": metrics["test_MSE"],
+                "test_MAE": metrics["test_MAE"],
+                "test_RMSE": metrics["test_RMSE"],
+                # scaled (for reference / debugging)
+                "best_train_mse_scaled": best_info["best_train_mse_scaled"],
+                "best_val_mse_scaled": best_info["best_val_mse_scaled"],
+                "test_MSE_scaled": metrics["test_MSE_scaled"],
+                "test_MAE_scaled": metrics["test_MAE_scaled"],
+                "test_RMSE_scaled": metrics["test_RMSE_scaled"],
+                "epochs_run": best_info["epochs_run"],
+                "final_train_mse": best_info["final_train_mse"], # price
+                "final_val_mse": best_info["final_val_mse"], # price
+                "final_train_mse_scaled": best_info["final_train_mse_scaled"],
+                "final_val_mse_scaled": best_info["final_val_mse_scaled"],
+            })
+            # Optional per-ticker training curve CSV (granular Logger artifacts)
+            pd.DataFrame({
+                "epoch": np.arange(1, len(train_hist) + 1, dtype=int),
+                "train_mse": train_hist,
+                "val_mse": val_hist,
+            }).to_csv(out_root_ / f"{ticker}_training_curve.csv", index=False)
+        # Write evaluation summary
+        if eval_rows:
+            df_eval = pd.DataFrame(eval_rows)
+            df_eval.to_csv(eval_csv_path_, index=False)
+            Logger.info(f"Wrote evaluation summary → {eval_csv_path_}")
+        else:
+            Logger.warning("No evaluation rows to write; did all tickers_ fail to run?")
+
+    @staticmethod
+    def find_weight_file_for_ticker(load_dir: Path, ticker: str) -> Optional[Path]:
+        if load_dir.is_file():
+            return load_dir
+        if not load_dir.exists() or not load_dir.is_dir():
+            return None
+        # Prefer files that contain the ticker symbol
+        cand = sorted(list(load_dir.glob(f"*{ticker}*.pt")) + list(load_dir.glob(f"*{ticker}*.pth")))
+        if cand:
+            return cand[0]
+        # Fallback: any .pt/.pth
+        any_cand = sorted(list(load_dir.glob("*.pt")) + list(load_dir.glob("*.pth")))
+        return any_cand[0] if any_cand else None
 
     @staticmethod
     def _list_all_tickers(prices_dir: Path) -> List[str]:
         return sorted({f.stem.upper() for f in prices_dir.glob("*.csv")})
-
-    @staticmethod
-    def _ensure_dir(p: Path) -> Path:
-        p.mkdir(parents=True, exist_ok=True)
-        return p
 
     @staticmethod
     def load_fnspid_news(fnspid_news: str, use_bodies: bool) -> pd.DataFrame:
