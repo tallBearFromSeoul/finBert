@@ -1,4 +1,4 @@
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification,
@@ -76,7 +76,7 @@ class FinBertScorer:
                     return_tensors="pt"
                 )
                 inputs = {k: v.to(self.pipe.device) for k, v in inputs.items()}
-                with autocast("cuda"): # Enable mixed precision
+                with autocast(device_type="cuda"): # Enable mixed precision
                     outputs = self.pipe.model(**inputs)
                 probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
                 for prob in probs:

@@ -12,17 +12,18 @@ from utils.datetime import ensure_utc
 from utils.logger import Logger
 
 class SentimentGenerator:
-    def __init__(self, tickers_: List[str], paths_: Paths, sentiment_path_in_: Optional[Path]):
+    def __init__(self, tickers_: List[str], paths_: Paths, sentiment_csv_path_in_: Optional[Path]):
         self.tickers: List[str] = tickers_
         self.paths: Paths = paths_
-        self.sentiment_path_in: Optional[Path] = sentiment_path_in_
+        self.sentiment_csv_path_in: Optional[Path] = sentiment_csv_path_in_
 
-    def load_or_generate(self, start_date_: datetime, end_date_: datetime) -> SentimentGenerator:
+    def load_or_generate(self, article_df_: pd.DataFrame, settings_: Settings, schema_: Schema,
+                         start_date_: datetime, end_date_: datetime, fine_tune_: bool) -> SentimentGenerator:
         # Sentiment daily — either load, or generate once
-        if self.sentiment_path_in and self.sentiment_path_in.exists():
-            self.load(self.sentiment_path_in)
+        if self.sentiment_csv_path_in:
+            self.load(self.sentiment_csv_path_in)
             return self
-        self.generate(start_date_, end_date_)
+        self.generate(article_df_, settings_, schema_, start_date_, end_date_, fine_tune_)
         return self
 
     def generate(self, article_df_: pd.DataFrame, settings_: Settings, schema_: Schema,
@@ -30,11 +31,8 @@ class SentimentGenerator:
         # Build a union trading calendar
         # Concatenate just the date column from all price files to form union of trading days
         cal_frames = []
-        for t in self.tickers:
-            p = self.prices_path_in / f"{t}.csv"
-            if not p.exists():
-                raise FileNotFoundError(f"Price file not found: {p}")
-            df_tmp = pd.read_csv(p, usecols=["date"])
+        for ticker in self.tickers:
+            df_tmp = pd.read_csv(self.paths.prices_csv_path / f"{ticker}.csv", usecols=["date"])
             df_tmp["date"] = ensure_utc(pd.to_datetime(df_tmp["date"], errors="coerce"))
             cal_frames.append(df_tmp[["date"]])
         if not cal_frames:
@@ -54,23 +52,23 @@ class SentimentGenerator:
                                                                            fine_tune_)
 
     def load(self) -> None:
-        self.daily_sentiment = pd.read_csv(self.sentiment_path_in)
+        self.daily_sentiment = pd.read_csv(self.sentiment_csv_path_in)
         if "trading_date" in self.daily_sentiment.columns:
             # make sure trading_date dtype is date (no tz)
             self.daily_sentiment["trading_date"] = \
                 pd.to_datetime(self.daily_sentiment["trading_date"], errors="coerce").dt.date
-        Logger.info(f"Loaded precomputed sentiment from {self.sentiment_path_in}")
+        Logger.info(f"Loaded precomputed sentiment from {self.sentiment_csv_path_in}")
 
     @staticmethod
     def generate_daily_sentiment(article_df: pd.DataFrame, prices_df: pd.DataFrame,
                                  paths: Paths, s: Settings, schema: Schema, fine_tune: bool) -> pd.DataFrame:
-        calendar = TradingCalendar.build_calendar(prices_df, schema)
+        calendar = TradingCalendar.build_trading_calendar(prices_df, schema)
         article_preprocessor = ArticlePreprocessor(s, schema, calendar)
         ticker_col = schema.article_ticker
         time_col = schema.article_time
         title_col = schema.article_title
 
-        article_df[ticker_col] = article_preprocessor.normalize_tickers(article_df[ticker_col])
+        article_df[ticker_col] = article_preprocessor.normalize_tickers(article_df)
         article_df["published_utc"] = ensure_utc(article_df[time_col])
         if s.dedupe_titles:
             article_df = article_df.drop_duplicates(subset=[title_col]).reset_index(drop=True)
@@ -96,8 +94,7 @@ class SentimentGenerator:
         )
         grp = grp.rename(columns={ticker_col: "ticker"})
         grp["trading_date"] = pd.to_datetime(grp["trading_date"]).dt.date
-        os.makedirs(os.path.dirname(paths.out_sentiment_csv) or ".", exist_ok=True)
-        grp.sort_values(["ticker", "trading_date"]).to_csv(paths.out_sentiment_csv, index=False)
-        Logger.info(f"Wrote daily sentiment → {paths.out_sentiment_csv}")
+        grp.sort_values(["ticker", "trading_date"]).to_csv(paths.out_sentiment_csv_path, index=False)
+        Logger.info(f"Wrote daily sentiment → {paths.out_sentiment_csv_path}")
         return grp
 

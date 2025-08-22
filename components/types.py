@@ -1,16 +1,21 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import List, Optional
 import pandas as pd
 
 @dataclass(frozen=True, slots=True)
 class Paths:
-    fnspid_article_csv: str
-    kaggle_article_csv: str
-    prices_csv: str
-    out_sentiment_csv: str
+    fnspid_article_csv_path: Path
+    kaggle_article_csv_path: Path
+    prices_csv_path: Path
+    out_sentiment_csv_path: Path
+
+    def __post_init__(self):
+        for p in (self.fnspid_article_csv_path, self.kaggle_article_csv_path, self.prices_csv_path):
+            if not p.exists():
+                raise FileNotFoundError(f"Price file not found: {p}")
 
 @dataclass(frozen=True, slots=True)
 class Schema:
@@ -41,34 +46,34 @@ class TradingCalendar:
     Trading calendar derived from the prices table.
     Provides next_trading_day(date) by binary search over sorted unique dates.
     """
-    def __init__(self, trading_days: List[date]):
-        if not trading_days:
+    def __init__(self, trading_days_: List[date]):
+        if not trading_days_:
             raise ValueError("Empty trading_days.")
-        self._days = sorted(set(trading_days))
+        self._days = sorted(set(trading_days_))
 
     @property
     def days(self) -> List[date]:
         return self._days
 
-    def next_trading_day(self, d: date) -> date:
-        idx = TradingCalendar._bisect_left(self._days, d)
+    def next_trading_day(self, date_: date) -> date:
+        idx = TradingCalendar._bisect_left(self._days, date_)
         if idx == len(self._days):
-            raise ValueError(f"No trading day on/after {d} in calendar.")
+            raise ValueError(f"No trading day on/after {date_} in calendar.")
         return self._days[idx]
 
     @staticmethod
-    def _bisect_left(a: List[date], x: date) -> int:
-        lo, hi = 0, len(a)
+    def _bisect_left(dates_: List[date], target_date_: date) -> int:
+        lo, hi = 0, len(dates_)
         while lo < hi:
             mid = (lo + hi) // 2
-            if a[mid] < x:
+            if dates_[mid] < target_date_:
                 lo = mid + 1
             else:
                 hi = mid
         return lo
 
     @staticmethod
-    def build_trading_calendar(prices_df: pd.DataFrame, schema: Schema) -> TradingCalendar:
-        dates = pd.to_datetime(prices_df[schema.price_date], errors="coerce").dt.date
+    def build_trading_calendar(prices_df_: pd.DataFrame, schema_: Schema) -> TradingCalendar:
+        dates = pd.to_datetime(prices_df_[schema_.price_date], errors="coerce").dt.date
         unique_days = dates.dropna().unique().tolist()
         return TradingCalendar(unique_days)
