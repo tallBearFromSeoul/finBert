@@ -69,52 +69,43 @@ class Logger:
         cls._configured = True
 
     @classmethod
-    def setup_file(cls, path: str) -> None:
-        path_obj = Path(path)
-        entry = cls._get_entry_name()
-        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        process_name = multiprocessing.current_process().name
-        filename = f"{entry}_{date_str}_{process_name}.log"
-        file_path = path_obj / filename
-
-        path_obj.mkdir(parents=True, exist_ok=True)
-
+    def setup_file(cls, path_: Path) -> None:
         if cls._file_handler is not None:
             cls._logger.removeHandler(cls._file_handler)
 
-        cls._file_handler = logging.FileHandler(file_path, encoding="utf-8")
+        cls._file_handler = logging.FileHandler(path_, encoding="utf-8")
         cls._file_handler.setLevel(logging.INFO)
         cls._file_handler.setFormatter(cls.UTCFormatter())
         cls._logger.addHandler(cls._file_handler)
 
-        print(f"[Logger] writing to {file_path!r}")
+        print(f"[Logger] writing to {path_!r}")
 
     @classmethod
-    def info(cls, msg: str, *args: Any, **kwargs: Any) -> None:
+    def info(cls, msg_: str, *args: Any, **kwargs: Any) -> None:
         cls._ensure_configured()
         context = cls._get_context()
-        cls._logger.info(f"{context} {msg}", *args, **kwargs)
+        cls._logger.info(f"{context} {msg_}", *args, **kwargs)
 
     @classmethod
-    def debug(cls, msg: str, *args: Any, **kwargs: Any) -> None:
+    def debug(cls, msg_: str, *args: Any, **kwargs: Any) -> None:
         cls._ensure_configured()
         context = cls._get_context()
-        cls._logger.debug(f"{context} {msg}", *args, **kwargs)
+        cls._logger.debug(f"{context} {msg_}", *args, **kwargs)
 
     @classmethod
-    def warning(cls, msg: str, *args: Any, **kwargs: Any) -> None:
+    def warning(cls, msg_: str, *args: Any, **kwargs: Any) -> None:
         cls._ensure_configured()
         context = cls._get_context()
-        cls._logger.warning(f"{context} {msg}", *args, **kwargs)
+        cls._logger.warning(f"{context} {msg_}", *args, **kwargs)
 
     @classmethod
-    def error(cls, msg: str, *args: Any, **kwargs: Any) -> None:
+    def error(cls, msg_: str, *args: Any, **kwargs: Any) -> None:
         cls._ensure_configured()
         context = cls._get_context()
-        cls._logger.error(f"{context} {msg}", *args, **kwargs)
+        cls._logger.error(f"{context} {msg_}", *args, **kwargs)
 
     @classmethod
-    def fatal(cls, msg: str, *args: Any, **kwargs: Any) -> None:
+    def fatal(cls, msg_: str, *args: Any, **kwargs: Any) -> None:
         cls._ensure_configured()
         context = cls._get_context()
-        cls._logger.fatal(f"{context} {msg}", *args, **kwargs)
+        cls._logger.fatal(f"{context} {msg_}", *args, **kwargs)
