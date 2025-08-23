@@ -89,8 +89,7 @@ class SentimentGenerator:
         if fine_tune_path_ is not None:
             model, tokenizer = FinBertScorer.fine_tune_finbert(article_df_, prices_df_, schema_,
                                                                settings_, article_preprocessor, fine_tune_path_)
-            scorer = FinBertScorer(settings_.batch_size, settings_.max_length,
-                                   model=model, tokenizer=tokenizer)
+            scorer = FinBertScorer(settings_.batch_size, settings_.max_length, model, tokenizer)
         else:
             scorer = FinBertScorer(settings_.batch_size, settings_.max_length)
         score_df = scorer.score_texts(article_df_["text"].tolist())

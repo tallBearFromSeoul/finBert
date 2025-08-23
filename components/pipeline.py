@@ -26,6 +26,8 @@ class Pipeline:
         sentiment_csv_path_in = Path(os.path.expanduser(args.sentiment_csv_path_in)).resolve() \
             if args.sentiment_csv_path_in else None
         out_root = ensure_dir(Path("output") / runtime)
+        out_logs = ensure_dir(out_root / "logs")
+        Logger.setup_file(out_logs / "pipeline.log")
 
         load_dir = Path(os.path.expanduser(args.load_dir)).resolve() if args.load_dir else None
         # Output layout
