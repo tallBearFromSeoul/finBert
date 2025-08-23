@@ -41,9 +41,9 @@ class SentimentGenerator:
         # Concatenate just the date column from all price files to form union of trading days
         cal_frames = []
         for ticker in self.tickers:
-            df_tmp = pd.read_csv(self.data_paths.prices_csv_dir / f"{ticker}.csv", usecols=["date"])
+            df_tmp = pd.read_csv(self.data_paths.prices_csv_dir / f"{ticker}.csv", usecols=["date", "open", "high", "low", "close", "volume"])
             df_tmp["date"] = ensure_utc(pd.to_datetime(df_tmp["date"], errors="coerce"))
-            cal_frames.append(df_tmp[["date"]])
+            cal_frames.append(df_tmp)
         if not cal_frames:
             raise ValueError("No price data to build union trading calendar.")
         prices_calendar_df = pd.concat(cal_frames, ignore_index=True)
@@ -51,7 +51,7 @@ class SentimentGenerator:
         # Filter calendar dates to study window
         prices_calendar_df = prices_calendar_df[
             (prices_calendar_df["date"] > self.start_date)
-            & (prices_calendar_df["date"] < self.end_date)].dropna(subset=["date"])
+            & (prices_calendar_df["date"] < self.end_date)]
         # Where to write generated sentiment
         self.daily_sentiment = SentimentGenerator._generate_daily_sentiment(self.article_df,
                                                                             prices_calendar_df,
@@ -71,7 +71,7 @@ class SentimentGenerator:
     @staticmethod
     def _generate_daily_sentiment(article_df_: pd.DataFrame, prices_df_: pd.DataFrame,
                                   data_paths_: DataPaths, settings_: Settings, schema_: Schema,
-                                  fine_tune_: bool) -> pd.DataFrame:
+                                  fine_tune_path_: Optional[Path]) -> pd.DataFrame:
         calendar = TradingCalendar.build_trading_calendar(prices_df_, schema_)
         article_preprocessor = ArticlePreprocessor(settings_, schema_, calendar)
         ticker_col = schema_.article_ticker
@@ -86,9 +86,9 @@ class SentimentGenerator:
         article_df_ = article_df_.dropna(subset=[ticker_col, "published_utc"]).reset_index(drop=True)
         article_df_ = article_df_[article_df_["text"].str.len() > 0].reset_index(drop=True)
         model = None
-        if fine_tune_:
+        if fine_tune_path_ is not None:
             model, tokenizer = FinBertScorer.fine_tune_finbert(article_df_, prices_df_, schema_,
-                                                               settings_, article_preprocessor)
+                                                               settings_, article_preprocessor, fine_tune_path_)
             scorer = FinBertScorer(settings_.batch_size, settings_.max_length,
                                    model=model, tokenizer=tokenizer)
         else:

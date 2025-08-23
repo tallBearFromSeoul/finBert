@@ -1,17 +1,12 @@
-from datetime import datetime
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from torch.utils.data import DataLoader
+from typing import  Dict, List, Optional
 import numpy as np
-import pandas as pd
 import torch
 
-from components.schema import Schema
-from utils.datetime_utils import ensure_utc
 from utils.logger import Logger
-from utils.pathlib_utils import ensure_dir
 
 # ----------------------------- Model ---------------------------------------- #
 class LSTMRegressor(nn.Module):
@@ -83,7 +78,7 @@ def train_model(
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = LSTMRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
     # Optionally load initial weights
-    if load_path is not None and Path(load_path).exists():
+    if load_path is not None:
         Logger.info(f"Loading initial weights from: {load_path}")
         state = torch.load(load_path, map_location=device)
         if isinstance(state, dict) and "state_dict" in state:

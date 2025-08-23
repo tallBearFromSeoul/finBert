@@ -72,16 +72,15 @@ class Pipeline:
         data_paths = DataPaths(fnspid_csv_path, kaggle_csv_path, prices_dir, out_sentiment_csv)
         sentiment_generator = SentimentGenerator(
             tickers, data_paths, settings, schema, sentiment_csv_path_in, article_df,
-            start_date, end_date, args.fine_tune)
-        self.train(ticker, sentiment_generator.daily_sentiment, prices_dir, settings, schema,
+            start_date, end_date, (out_root / args.fine_tune_dir) if args.fine_tune else None)
+        self.train(tickers, sentiment_generator.daily_sentiment, prices_dir, schema,
                    start_date, end_date, args, out_root, saved_root, eval_csv_path, load_dir)
 
     @staticmethod
     def train(
         tickers_: List[str], daily_sentiment_: pd.DataFrame, prices_dir_: Path,
-        settings_: Settings, schema_: Schema, start_date_: datetime, end_date_: datetime,
-        args_: argparse.Namespace, out_root_: Path, saved_root_: Path, eval_csv_path_: Path,
-        load_dir_: Optional[Path]):
+        schema_: Schema, start_date_: datetime, end_date_: datetime, args_: argparse.Namespace,
+        out_root_: Path, saved_root_: Path, eval_csv_path_: Path, load_dir_: Optional[Path]):
         eval_rows: List[Dict[str, object]] = []
         for ticker in tickers_:
             Logger.info(f"Training predictor for ticker: {ticker}")
@@ -110,6 +109,7 @@ class Pipeline:
                 cand = Pipeline.find_weight_file_for_ticker(load_dir_, ticker)
                 if cand:
                     resolved_load_path = cand
+                    Logger.info(f"--load-dir provided, found weights {ticker} {cand} in {load_dir_}")
                 else:
                     Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
             # Train (now passes y_scaler, returns both scaled and price metrics)
@@ -125,7 +125,6 @@ class Pipeline:
                 save_dir=ticker_save_dir,
                 ticker=ticker,
                 load_path=resolved_load_path,
-                log_per_batch_debug=args_.log_batches_debug,
                 y_scaler=y_scaler
             )
             # Evaluate
@@ -281,6 +280,12 @@ class Pipeline:
         ap.add_argument(
             "--sentiment-csv-path-in", required=False,
             help="If provided, load precomputed daily sentiment CSV from this path and skip FinBERT.")
+        ap.add_argument(
+            "--fine-tune-dir", default="finetuned_finbert",
+            help="Fine-tune FinBERT store path")
+        ap.add_argument(
+            "--fine-tune", action="store_true",
+            help="Fine-tune FinBERT with NSI labels before scoring")
 
         ap.add_argument(
             "--data-source", default="kaggle", choices=["fnspid", "kaggle"],
@@ -303,9 +308,6 @@ class Pipeline:
         ap.add_argument(
             "--patience", type=int, default=20)
         ap.add_argument(
-            "--fine-tune", action="store_true",
-            help="Fine-tune FinBERT with NSI labels before scoring")
-        ap.add_argument(
             "--use-bodies", action="store_true",
             help="Include article bodies in sentiment analysis if available")
 
@@ -313,11 +315,9 @@ class Pipeline:
             "--load-dir", default=None,
             help="Path to a weights file (.pt/.pth) or a directory containing saved weights to initialize training from.")
         ap.add_argument(
-            "--log-batches-debug", action="store_true", help="Log per-batch losses at DEBUG level.")
+            "--use-arima", action="store_true", default=True, help="Use hybrid ARIMA-LSTM approach")
         ap.add_argument(
-            "--use-arima", action="store_true", help="Use hybrid ARIMA-LSTM approach")
-        ap.add_argument(
-            "--predict-returns", action="store_true", help="Predict returns instead of closing prices")
+            "--predict-returns", action="store_true", default=True, help="Predict returns instead of closing prices")
         ap.add_argument(
             "--dropout-rate", type=float, default=0.2, help="Dropout rate for LSTM layers")
         ap.add_argument(

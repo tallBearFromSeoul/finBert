@@ -100,7 +100,8 @@ class TrainDataPreprocessor:
         x_scaler.fit(train[feat_cols].astype(float))
         # Transform X across splits
         for part in [train, val, test]:
-            part.loc[:, feat_cols] = x_scaler.transform(part[feat_cols].astype(float))
+            part[feat_cols] = part[feat_cols].astype(float)
+            part.loc[:, feat_cols] = x_scaler.transform(part[feat_cols])
         # Hybrid ARIMA if enabled
         is_hybrid = use_arima
         arima_pred_train = arima_pred_val = arima_pred_test = None
@@ -153,27 +154,7 @@ class TrainDataPreprocessor:
             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
             original_y_train, original_y_val, original_y_test
         )
-"""
-class TrainDataLoader:
-    def __iter__(self):
-        for ticker in tickers:
-            Logger.info(f"Training predictor for ticker: {ticker}")
-            price_path = prices_dir / f"{ticker}.csv"
-            if not price_path.exists():
-                Logger.warning(f"Skipping {ticker}: price file not found ({price_path})")
-                continue
-            prices_df = pd.read_csv(price_path, parse_dates=["date"], date_format="%Y-%m-%d")
-            prices_df["date"] = ensure_utc(prices_df["date"])
-            prices_df = prices_df[(prices_df["date"] > start_date) & (prices_df["date"] < end_date)].dropna(subset=["date"])
-            Logger.info(f"Loaded prices for {ticker} with columns={list(prices_df.columns)} shape={prices_df.shape}.")
-            # Join
-            df_joined = TrainDataPreprocessor.prepare_joined_frame(daily_sentiment, prices_df, schema, ticker)
-            df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(df_joined, ticker=ticker, lookback=args.lookback, predict_returns=args.predict_returns)
-            (dl_train, dl_val, dl_test, y_scaler, is_hybrid,
-             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
-             original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                df_supervised, feat_cols, lookback=args.lookback, use_arima=args.use_arima, batch_size=32)
-"""
+
 class TrainDataLoader(Iterator):
     """
     A wrapper class for lazily creating and yielding PyTorch DataLoaders for stock price data.
