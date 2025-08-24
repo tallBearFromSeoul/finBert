@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
+from quantreo.target_engineering.magnitude import _fast_ind_barrier
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.arima.model import ARIMA
 from torch.utils.data import Dataset, DataLoader
@@ -9,6 +10,7 @@ import math
 import numpy as np
 import pandas as pd
 import torch
+from tqdm import tqdm
 
 from components.schema import Schema
 from utils.datetime_utils import ensure_utc
@@ -58,12 +60,13 @@ class TrainDataPreprocessor:
         return joined.reset_index(drop=True)
 
     @staticmethod
-    def build_supervised_for_ticker(df_all: pd.DataFrame, ticker: str, lookback: int, predict_returns: bool) -> Tuple[pd.DataFrame, List[str]]:
+    def build_supervised_for_ticker(df_all: pd.DataFrame, ticker: str, predict_returns: bool) -> Tuple[pd.DataFrame, List[str]]:
         """
         Assemble features (no scaling here) and keep raw Close for later target scaling.
         """
         df = df_all[df_all["ticker"] == ticker].copy().sort_values("trading_date").reset_index(drop=True)
         feat_cols = ["SentimentScore"]
+        #TODO: CHANGE
         for c in ["Open", "High", "Low", "Volume", "Close"]:
             if c in df.columns:
                 feat_cols.append(c)

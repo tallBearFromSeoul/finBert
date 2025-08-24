@@ -51,7 +51,6 @@ def train_model(
     dl_train,
     dl_val,
     input_size: int,
-    is_hybrid: bool,
     arima_pred_train_slice: np.ndarray,
     arima_pred_val_slice: np.ndarray,
     original_y_train: np.ndarray,
@@ -61,7 +60,6 @@ def train_model(
     lr: float = 1e-4,
     weight_decay: float = 0.01,
     dropout_rate: float = 0.2,
-    device: str = None,
     save_dir: Optional[Path] = None,
     ticker: Optional[str] = None,
     load_path: Optional[Path] = None,
@@ -75,7 +73,7 @@ def train_model(
     """
     if y_scaler is None:
         raise ValueError("train_model: y_scaler must be provided to compute price-scale metrics.")
-    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model = LSTMRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
     # Optionally load initial weights
     if load_path is not None:
@@ -256,9 +254,10 @@ def train_model(
         "val_rmse": val_hist_price_rmse,
     }
     return model, train_hist_scaled, val_hist_scaled, out_info, price_hist
+
 # ----------------------------- Evaluation ----------------------------------- #
-def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, is_hybrid: bool, arima_pred_test_slice: np.ndarray, original_y_test: np.ndarray, device: str = None):
-    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, arima_pred_test_slice: np.ndarray, original_y_test: np.ndarray):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     preds_scaled, trues_scaled = [], []
     with torch.no_grad():

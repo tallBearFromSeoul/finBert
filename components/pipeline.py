@@ -2,6 +2,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import argparse
+import math
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
@@ -10,7 +12,7 @@ from components.sentiment_generator import SentimentGenerator
 from components.data_paths import DataPaths
 from components.schema import Schema
 from components.settings import Settings
-from components.train_data_loader import TrainDataLoader, TrainDataPreprocessor
+from components.train_data_loader import TrainDataPreprocessor
 from components.train import evaluate, train_model
 from utils.datetime_utils import ensure_utc
 from utils.logger import Logger
@@ -97,11 +99,13 @@ class Pipeline:
             # Join
             df_joined = TrainDataPreprocessor.prepare_joined_frame(daily_sentiment_, prices_df, schema_, ticker)
             df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
-                df_joined, ticker=ticker, lookback=args_.lookback, predict_returns=args_.predict_returns)
+                df_joined, ticker=ticker, predict_returns=args_.predict_returns
+            )
             (dl_train, dl_val, dl_test, y_scaler, is_hybrid,
-             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
-             original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                df_supervised, feat_cols, lookback=args_.lookback, use_arima=args_.use_arima, batch_size=args_.batch_size)
+            arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
+            original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
+                df_supervised, feat_cols, lookback=args_.lookback, use_arima=args_.use_arima, batch_size=args_.batch_size
+            )
 
             # Prepare saved weights dir for this ticker
             ticker_save_dir = ensure_dir(saved_root_ / ticker)
@@ -117,20 +121,37 @@ class Pipeline:
             # Train (now passes y_scaler, returns both scaled and price metrics)
             model, train_hist, val_hist, best_info, price_hist = train_model(
                 dl_train, dl_val, input_size=len(feat_cols),
-                is_hybrid=is_hybrid,
                 arima_pred_train_slice=arima_pred_train_slice,
                 arima_pred_val_slice=arima_pred_val_slice,
                 original_y_train=original_y_train,
                 original_y_val=original_y_val,
                 epochs=args_.epochs, patience=args_.patience, lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
-                device=None, # auto-select
                 save_dir=ticker_save_dir,
                 ticker=ticker,
                 load_path=resolved_load_path,
                 y_scaler=y_scaler
             )
             # Evaluate
-            metrics = evaluate(model, dl_test, y_scaler, is_hybrid, arima_pred_test_slice, original_y_test)
+            metrics = evaluate(model, dl_test, y_scaler, arima_pred_test_slice, original_y_test)
+
+            # Compute test dates for visualization (accounting for lookback)
+            train_ratio = 0.9
+            train_all_len = int(math.floor(len(df_supervised) * train_ratio))
+            test_start_idx = train_all_len
+            test_dates = df_supervised['trading_date'].iloc[test_start_idx + args_.lookback:].values
+            # Determine target type for prediction plot
+            if args_.predict_returns:
+                target_type = 'returns'
+            else:
+                target_type = 'price'
+            # Visualize predictions
+            Pipeline.visualize_prediction(
+                metrics['y_true'], metrics['y_pred'], test_dates, target_type, ticker, out_root_
+            )
+            # Visualize sentiment (full series)
+            sentiment_scores = df_joined['SentimentScore'].values
+            full_dates = df_joined['trading_date'].values
+            Pipeline.visualize_sentiment(sentiment_scores, full_dates, ticker, out_root_)
             Logger.info(
                 f"[{ticker}] Test (price) MSE={metrics['test_MSE']:.6f} | MAE={metrics['test_MAE']:.6f} | RMSE={metrics['test_RMSE']:.6f} "
                 f"(scaled MSE={metrics['test_MSE_scaled']:.6f})"
@@ -200,6 +221,42 @@ class Pipeline:
             Logger.info(f"Wrote evaluation summary → {eval_csv_path_}")
         else:
             Logger.warning("No evaluation rows to write; did all tickers_ fail to run?")
+
+    @staticmethod
+    def visualize_prediction(y_true: np.ndarray, y_pred: np.ndarray, dates: np.ndarray,
+                             target_type: str, ticker: str, out_root: Path):
+        """
+        Visualize true vs predicted values for the given target type and save as PNG.
+        """
+        plot_dir = ensure_dir(out_root / "plots")
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(dates, y_true, label='True')
+        ax.plot(dates, y_pred, label='Predicted')
+        ax.set_title(f'{ticker} {target_type.capitalize()} Prediction')
+        ax.set_xlabel('Date')
+        ylabel = 'Barrier Strength' if target_type == 'barrier' else target_type.capitalize()
+        ax.set_ylabel(ylabel)
+        ax.legend()
+        plt.savefig(plot_dir / f"{ticker}_{target_type}_prediction.png")
+        plt.close()
+        Logger.info(f"Saved prediction plot for {ticker} to {plot_dir / f'{ticker}_{target_type}_prediction.png'}")
+
+    @staticmethod
+    def visualize_sentiment(sentiment_scores: np.ndarray, dates: np.ndarray,
+                            ticker: str, out_root: Path):
+        """
+        Visualize daily sentiment scores over time and save as PNG.
+        """
+        plot_dir = ensure_dir(out_root / "plots")
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(dates, sentiment_scores, label='Sentiment Score')
+        ax.set_title(f'{ticker} Daily Sentiment')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Sentiment Score')
+        ax.legend()
+        plt.savefig(plot_dir / f"{ticker}_sentiment.png")
+        plt.close()
+        Logger.info(f"Saved sentiment plot for {ticker} to {plot_dir / f'{ticker}_sentiment.png'}")
 
     @staticmethod
     def find_weight_file_for_ticker(load_dir: Path, ticker: str) -> Optional[Path]:
@@ -282,6 +339,7 @@ class Pipeline:
         ap.add_argument(
             "--sentiment-csv-path-in", required=False,
             help="If provided, load precomputed daily sentiment CSV from this path and skip FinBERT.")
+
         ap.add_argument(
             "--fine-tune-dir", default="finetuned_finbert",
             help="Fine-tune FinBERT store path")
@@ -317,13 +375,13 @@ class Pipeline:
             "--load-dir", default=None,
             help="Path to a weights file (.pt/.pth) or a directory containing saved weights to initialize training from.")
         ap.add_argument(
-            "--use-arima", action="store_true", default=True, help="Use hybrid ARIMA-LSTM approach")
-        ap.add_argument(
-            "--predict-returns", action="store_true", default=True, help="Predict returns instead of closing prices")
-        ap.add_argument(
             "--dropout-rate", type=float, default=0.2, help="Dropout rate for LSTM layers")
         ap.add_argument(
             "--weight-decay", type=float, default=0.01, help="Weight decay for Adam optimizer")
+        ap.add_argument(
+            "--use-arima", action="store_true", default=True, help="Use hybrid ARIMA-LSTM approach")
+        ap.add_argument(
+            "--predict-returns", action="store_true", default=True, help="Predict returns instead of closing prices")
         return ap.parse_args(), runtime
 
 def main():
