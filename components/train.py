@@ -53,8 +53,6 @@ def train_model(
     dl_train,
     dl_val,
     input_size: int,
-    arima_pred_train_slice: np.ndarray,
-    arima_pred_val_slice: np.ndarray,
     original_y_train: np.ndarray,
     original_y_val: np.ndarray,
     epochs: int = 100,
@@ -133,7 +131,7 @@ def train_model(
         if tr_pred_s_batches:
             y_pred_s = np.concatenate(tr_pred_s_batches)
             y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_pred_price = arima_pred_train_slice + y_pred_inter
+            y_pred_price = y_pred_inter
             y_true_price = original_y_train
             tr_mse_price = mse(y_true_price, y_pred_price)
             tr_mae_price = mae(y_true_price, y_pred_price)
@@ -160,7 +158,7 @@ def train_model(
         if val_pred_s_batches:
             y_pred_s = np.concatenate(val_pred_s_batches)
             y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_pred_price = arima_pred_val_slice + y_pred_inter
+            y_pred_price = y_pred_inter
             y_true_price = original_y_val
             val_mse_price = mse(y_true_price, y_pred_price)
             val_mae_price = mae(y_true_price, y_pred_price)
@@ -176,7 +174,6 @@ def train_model(
         val_hist_price_mae.append(val_mae_price)
         train_hist_price_rmse.append(tr_rmse_price)
         val_hist_price_rmse.append(val_rmse_price)
-        # Logger: both scales
         Logger.info(
             "Epoch %03d | "
             "train (scaled) MSE: mean=%.6f med=%.6f std=%.6f min=%.6f max=%.6f | "
@@ -253,7 +250,7 @@ def train_model(
     return model, train_hist_scaled, val_hist_scaled, out_info, price_hist
 
 # ----------------------------- Evaluation ----------------------------------- #
-def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, arima_pred_test_slice: np.ndarray, original_y_test: np.ndarray):
+def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, original_y_test: np.ndarray):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     preds_scaled, trues_scaled = [], []
@@ -282,9 +279,8 @@ def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, arim
     scaled_RMSE = rmse(y_true_s, y_pred_s)
     # Inverse to intermediate scale (residual or direct)
     y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-    y_true_inter = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
     # Final to original target scale
-    y_pred = arima_pred_test_slice + y_pred_inter
+    y_pred = y_pred_inter
     y_true = original_y_test
     return {
         "test_MSE": mse(y_true, y_pred),

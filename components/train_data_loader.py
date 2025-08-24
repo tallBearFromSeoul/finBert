@@ -3,14 +3,12 @@ from datetime import datetime
 from pathlib import Path
 from quantreo.target_engineering.magnitude import _fast_ind_barrier
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from statsmodels.tsa.arima.model import ARIMA
 from torch.utils.data import Dataset, DataLoader
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import math
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
 
 from components.schema import Schema
 from utils.datetime_utils import ensure_utc
@@ -89,7 +87,7 @@ class TrainDataPreprocessor:
 
     @staticmethod
     def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str],
-                                    lookback: int, use_arima: bool, batch_size: int, scale_method: str):
+                                    lookback: int, batch_size: int, scale_method: str):
         """
         Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
         """
@@ -104,26 +102,9 @@ class TrainDataPreprocessor:
         for part in [train, val, test]:
             part[feat_cols] = part[feat_cols].astype(float)
             part.loc[:, feat_cols] = x_scaler.transform(part[feat_cols])
-        # Hybrid ARIMA if enabled
-        is_hybrid = use_arima
-        arima_pred_train = arima_pred_val = arima_pred_test = None
-        if is_hybrid:
-            arima_order = (1, 1, 2)
-            # Fit on train for train fitted and val forecast
-            arima_fit = ARIMA(train['raw_target'], order=arima_order).fit()
-            arima_pred_train = arima_fit.fittedvalues.values
-            arima_pred_val = arima_fit.forecast(steps=len(val)).values
-            # Fit on train_all for test forecast
-            arima_fit_full = ARIMA(train_all['raw_target'], order=arima_order).fit()
-            arima_pred_test = arima_fit_full.forecast(steps=len(test)).values
-            # Set y to residuals
-            train['y'] = train['raw_target'] - arima_pred_train
-            val['y'] = val['raw_target'] - arima_pred_val
-            test['y'] = test['raw_target'] - arima_pred_test
-        else:
-            train['y'] = train['raw_target']
-            val['y'] = val['raw_target']
-            test['y'] = test['raw_target']
+        train['y'] = train['raw_target']
+        val['y'] = val['raw_target']
+        test['y'] = test['raw_target']
         # Fit y scaler on TRAIN only
         y_scaler = scaler()
         y_scaler.fit(train[['y']])
@@ -143,17 +124,8 @@ class TrainDataPreprocessor:
         original_y_train = train['raw_target'].iloc[lookback:].values
         original_y_val = val['raw_target'].iloc[lookback:].values
         original_y_test = test['raw_target'].iloc[lookback:].values
-        if is_hybrid:
-            arima_pred_train_slice = arima_pred_train[lookback:]
-            arima_pred_val_slice = arima_pred_val[lookback:]
-            arima_pred_test_slice = arima_pred_test[lookback:]
-        else:
-            arima_pred_train_slice = np.zeros_like(original_y_train)
-            arima_pred_val_slice = np.zeros_like(original_y_val)
-            arima_pred_test_slice = np.zeros_like(original_y_test)
         return (
-            dl_train, dl_val, dl_test, y_scaler, is_hybrid,
-            arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
+            dl_train, dl_val, dl_test, y_scaler,
             original_y_train, original_y_val, original_y_test
         )
 
@@ -170,7 +142,6 @@ class TrainDataLoader(Iterator):
         end_date (datetime): End date for filtering data.
         lookback (int): Lookback period for supervised learning.
         predict_returns (bool): Whether to predict returns instead of prices.
-        use_arima (bool): Whether to include ARIMA predictions.
         batch_size (int): Number of samples per batch.
         num_workers (int): Number of subprocesses for data loading.
         pin_memory (bool): Whether to pin memory for GPU transfer.
@@ -189,7 +160,6 @@ class TrainDataLoader(Iterator):
         lookback_: int,
         batch_size_: int,
         predict_returns_: bool,
-        use_arima_: bool,
         num_workers_: int = 0,
         pin_memory_: bool = True,
         seed_: Optional[int] = None,
@@ -202,7 +172,6 @@ class TrainDataLoader(Iterator):
         self.end_date = end_date_
         self.lookback = lookback_
         self.predict_returns = predict_returns_
-        self.use_arima = use_arima_
         self.batch_size = batch_size_
         self.num_workers = num_workers_
         self.pin_memory = pin_memory_
@@ -272,7 +241,7 @@ class TrainDataLoader(Iterator):
 
             # Build supervised dataset
             df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
-                df_joined, ticker=ticker, lookback=self.lookback, predict_returns=self.predict_returns
+                df_joined, ticker=ticker, predict_returns=self.predict_returns
             )
 
             # Create DataLoaders
@@ -283,7 +252,6 @@ class TrainDataLoader(Iterator):
                     df_supervised,
                     feat_cols,
                     lookback=self.lookback,
-                    use_arima=self.use_arima,
                     batch_size=self.batch_size)
 
             # Configure DataLoaders
