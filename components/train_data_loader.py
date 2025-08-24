@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from quantreo.target_engineering.magnitude import _fast_ind_barrier
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from statsmodels.tsa.arima.model import ARIMA
 from torch.utils.data import Dataset, DataLoader
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -91,15 +91,16 @@ class TrainDataPreprocessor:
 
     @staticmethod
     def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str],
-                                    lookback: int, use_arima: bool, batch_size: int):
+                                    lookback: int, use_arima: bool, batch_size: int, scale_method: str):
         """
         Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
         """
+        scaler = MinMaxScaler if scale_method == "minmax" else StandardScaler
         # Splits
         train_all, test = TrainDataPreprocessor._temporal_split(df, train_ratio=0.9)
         train, val = TrainDataPreprocessor._split_train_val(train_all, val_ratio_within_train=0.1)
         # Fit X scaler on TRAIN only
-        x_scaler = MinMaxScaler()
+        x_scaler = scaler()
         x_scaler.fit(train[feat_cols].astype(float))
         # Transform X across splits
         for part in [train, val, test]:
@@ -126,7 +127,7 @@ class TrainDataPreprocessor:
             val['y'] = val['raw_target']
             test['y'] = test['raw_target']
         # Fit y scaler on TRAIN only
-        y_scaler = MinMaxScaler()
+        y_scaler = scaler()
         y_scaler.fit(train[['y']])
         # Transform y (residuals or raw target)
         train['y'] = y_scaler.transform(train[['y']]).ravel()

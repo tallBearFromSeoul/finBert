@@ -104,7 +104,8 @@ class Pipeline:
             (dl_train, dl_val, dl_test, y_scaler, is_hybrid,
             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
             original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                df_supervised, feat_cols, lookback=args_.lookback, use_arima=args_.use_arima, batch_size=args_.batch_size
+                df_supervised, feat_cols, lookback=args_.lookback, use_arima=args_.use_arima, batch_size=args_.batch_size,
+                scale_method=args_.scale_method
             )
 
             # Prepare saved weights dir for this ticker
@@ -125,7 +126,7 @@ class Pipeline:
                 arima_pred_val_slice=arima_pred_val_slice,
                 original_y_train=original_y_train,
                 original_y_val=original_y_val,
-                epochs=args_.epochs, patience=args_.patience, lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                epochs=args_.epochs, patience=args_.patience, lr=1e-3, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
                 save_dir=ticker_save_dir,
                 ticker=ticker,
                 load_path=resolved_load_path,
@@ -358,7 +359,7 @@ class Pipeline:
         ap.add_argument(
             "--market-close", default="16:00")
         ap.add_argument(
-            "--batch-size", type=int, default=8192, help="FinBERT scoring batch size")
+            "--batch-size", type=int, default=1, help="FinBERT scoring batch size")
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(
@@ -379,10 +380,18 @@ class Pipeline:
         ap.add_argument(
             "--weight-decay", type=float, default=0.01, help="Weight decay for Adam optimizer")
         ap.add_argument(
-            "--use-arima", action="store_true", default=True, help="Use hybrid ARIMA-LSTM approach")
+            "--use-arima", action="store_true", default=False, help="Use hybrid ARIMA-LSTM approach")
         ap.add_argument(
-            "--predict-returns", action="store_true", default=True, help="Predict returns instead of closing prices")
+            "--predict-returns", action="store_true", default=False, help="Predict returns instead of closing prices")
+        ap.add_argument(
+            "--scale-method", default="minmax", help="Use minmax or standard scaling for features")
         return ap.parse_args(), runtime
+
+# standard vs minmax
+# model: arima vs lstm vs transformer
+# returns vs price
+# compare model performance with sentiment vs without sentiment
+# plots for data with sentiment vs all data
 
 def main():
     Pipeline()

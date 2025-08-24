@@ -19,6 +19,8 @@ class LSTMRegressor(nn.Module):
         self.relu = nn.ReLU()
         self.fc_out = nn.Linear(25, 1)
     def forward(self, x):
+        if x.dim() == 2:
+            x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
         # x: (B, T, F)
         out1, _ = self.lstm1(x) # (B, T, 100)
         out1 = self.dropout(out1)
@@ -57,7 +59,7 @@ def train_model(
     original_y_val: np.ndarray,
     epochs: int = 100,
     patience: int = 20,
-    lr: float = 1e-4,
+    lr: float = 1e-3,
     weight_decay: float = 0.01,
     dropout_rate: float = 0.2,
     save_dir: Optional[Path] = None,
@@ -108,7 +110,7 @@ def train_model(
         # ---- Train ----
         model.train()
         tr_losses = []
-        tr_pred_s_batches, tr_true_s_batches = [], []
+        tr_pred_s_batches = []
         for step, (xb, yb) in enumerate(dl_train, start=1):
             xb = xb.to(device) # (B, T, F)
             yb = yb.to(device) # (B,)
@@ -121,7 +123,6 @@ def train_model(
             tr_losses.append(l)
             # accumulate for price-scale metrics
             tr_pred_s_batches.append(pred.detach().cpu().numpy().ravel())
-            tr_true_s_batches.append(yb.detach().cpu().numpy().ravel())
             if log_per_batch_debug and step % 50 == 0:
                 Logger.debug(f"[train] epoch {ep} step {step} loss_scaled={l:.6f}")
         # scaled metrics (epoch-level)
@@ -130,9 +131,7 @@ def train_model(
         # price-scale metrics (epoch-level)
         if tr_pred_s_batches:
             y_pred_s = np.concatenate(tr_pred_s_batches)
-            y_true_s = np.concatenate(tr_true_s_batches)
             y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_true_inter = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
             y_pred_price = arima_pred_train_slice + y_pred_inter
             y_true_price = original_y_train
             tr_mse_price = mse(y_true_price, y_pred_price)
@@ -143,7 +142,7 @@ def train_model(
         # ---- Val ----
         model.eval()
         val_losses = []
-        val_pred_s_batches, val_true_s_batches = [], []
+        val_pred_s_batches = []
         with torch.no_grad():
             for step, (xb, yb) in enumerate(dl_val, start=1):
                 xb = xb.to(device)
@@ -153,16 +152,13 @@ def train_model(
                 l = float(loss.item())
                 val_losses.append(l)
                 val_pred_s_batches.append(pred.detach().cpu().numpy().ravel())
-                val_true_s_batches.append(yb.detach().cpu().numpy().ravel())
                 if log_per_batch_debug and step % 50 == 0:
                     Logger.debug(f"[val] epoch {ep} step {step} loss_scaled={l:.6f}")
         val_stats = _loss_stats(val_losses)
         val_mse_scaled = val_stats["mean"]
         if val_pred_s_batches:
             y_pred_s = np.concatenate(val_pred_s_batches)
-            y_true_s = np.concatenate(val_true_s_batches)
             y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_true_inter = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
             y_pred_price = arima_pred_val_slice + y_pred_inter
             y_true_price = original_y_val
             val_mse_price = mse(y_true_price, y_pred_price)
