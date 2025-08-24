@@ -12,12 +12,12 @@ from utils.logger import Logger
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=512, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=512, hidden_size=128, batch_first=True)
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=100, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=100, hidden_size=100, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(128, 32)
+        self.fc1 = nn.Linear(100, 25)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(32, 1)
+        self.fc_out = nn.Linear(25, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)

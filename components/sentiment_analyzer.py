@@ -34,7 +34,8 @@ def visualize_csv(csv_path: Path, save_dir: Path, prices_dir: Path, yf_download_
         prices = pd.read_csv(str(prices_path), parse_dates=['date'])
         prices['trading_date'] = prices['date']
         # Merge with sentiment group
-        group = pd.merge(group, prices[['trading_date', 'open', 'high', 'low', 'close', 'adj close', 'volume']],
+        group = pd.merge(group, prices[['trading_date', #'open', 'high', 'low', 'close', 'volume'
+                                        'adj close']],
                          on='trading_date', how='left')
         # Compute daily returns
         group['returns'] = (group['adj close'] - group['adj close'].shift(1)) / group['adj close'].shift(1)

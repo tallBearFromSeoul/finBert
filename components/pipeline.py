@@ -250,11 +250,12 @@ class Pipeline:
                 )
             else:
                 # LSTM variants
-                if args_.model == 'lstm':
-                    feat_cols = [c for c in feat_cols if c != 'SentimentScore']  # Exclude sentiment for pure LSTM
+                sentiment_col: Optional[str] = 'SentimentScore' if args_.model == 'finbert-lstm' else None
                 (dl_train, dl_val, dl_test, y_scaler,
-                original_y_train, original_y_val, original_y_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                    df_supervised, feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
+                 original_y_train, original_y_val, original_y_test,
+                 dates_train, dates_val, dates_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
+                    df_supervised, sentiment_col,
+                    feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
                     scale_method=args_.scale_method
                 )
 
@@ -269,14 +270,15 @@ class Pipeline:
                         Logger.info(f"--load-dir provided, found weights {ticker} {cand} in {load_dir_}")
                     else:
                         Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
+                input_size = len(feat_cols) * args_.lookback + (1 if sentiment_col else 0)
                 # Train (now passes y_scaler, returns both scaled and price metrics)
                 model, train_hist, val_hist, best_info, price_hist = train_model(
-                    dl_train, dl_val, input_size=len(feat_cols),
+                    dl_train, dl_val, input_size=input_size,
                     original_y_train=original_y_train,
                     original_y_val=original_y_val,
                     epochs=args_.epochs, patience=args_.patience,
                     lookback=args_.lookback,
-                    lr=1e-3, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                    lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
                     save_dir=ticker_save_dir,
                     ticker=ticker,
                     load_path=resolved_load_path,
@@ -288,9 +290,6 @@ class Pipeline:
                 metrics_test = evaluate(model, dl_test, y_scaler, original_y_test)
                 metrics = metrics_test
                 lb = args_.lookback
-                dates_train = df_supervised['trading_date'].iloc[lb : train_len]
-                dates_val = df_supervised['trading_date'].iloc[train_len + lb : train_all_len]
-                dates_test = df_supervised['trading_date'].iloc[train_all_len + lb : ]
                 y_true_train = metrics_train['y_true']
                 y_pred_train = metrics_train['y_pred']
                 y_true_val = metrics_val['y_true']
@@ -381,9 +380,29 @@ class Pipeline:
             Logger.warning("No evaluation rows to write; did all tickers_ fail to run?")
 
     @staticmethod
+    def visualize_sentiment(sentiment_scores: np.ndarray, dates: np.ndarray,
+                            ticker: str, out_root: Path):
+        """
+        Visualize daily sentiment scores over time and save as PNG.
+        """
+        mask = ~np.isnan(sentiment_scores)
+        sentiment_scores = sentiment_scores[mask]
+        dates = dates[mask]
+        plot_dir = ensure_dir(out_root / "plots")
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(dates, sentiment_scores, label='Sentiment Score')
+        ax.set_title(f'{ticker} Daily Sentiment')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Sentiment Score')
+        ax.legend()
+        plt.savefig(plot_dir / f"{ticker}_sentiment.png")
+        plt.close()
+        Logger.info(f"Saved sentiment plot for {ticker} to {plot_dir / f'{ticker}_sentiment.png'}")
+
+    @staticmethod
     def visualize_full_prediction(y_true: np.ndarray, y_pred: np.ndarray, dates: np.ndarray,
-                                target_type: str, ticker: str, model: str, out_root: Path,
-                                train_end_idx: int, val_end_idx: int):
+                                  target_type: str, ticker: str, model: str, out_root: Path,
+                                  train_end_idx: int, val_end_idx: int):
         """
         Visualize stitched true vs predicted values for train+val+test and save as PNG.
         """
@@ -401,23 +420,6 @@ class Pipeline:
         plt.savefig(plot_dir / f"{ticker}_{model}_full_{target_type}_prediction.png")
         plt.close()
         Logger.info(f"Saved full prediction plot for {ticker} to {plot_dir / f'{ticker}_{model}_full_{target_type}_prediction.png'}")
-
-    @staticmethod
-    def visualize_sentiment(sentiment_scores: np.ndarray, dates: np.ndarray,
-                            ticker: str, out_root: Path):
-        """
-        Visualize daily sentiment scores over time and save as PNG.
-        """
-        plot_dir = ensure_dir(out_root / "plots")
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.plot(dates, sentiment_scores, label='Sentiment Score')
-        ax.set_title(f'{ticker} Daily Sentiment')
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Sentiment Score')
-        ax.legend()
-        plt.savefig(plot_dir / f"{ticker}_sentiment.png")
-        plt.close()
-        Logger.info(f"Saved sentiment plot for {ticker} to {plot_dir / f'{ticker}_sentiment.png'}")
 
     @staticmethod
     def find_weight_file_for_ticker(load_dir: Path, ticker: str) -> Optional[Path]:
@@ -519,7 +521,7 @@ class Pipeline:
         ap.add_argument(
             "--market-close", default="16:30")
         ap.add_argument(
-            "--batch-size", type=int, default=512, help="FinBERT scoring batch size")
+            "--batch-size", type=int, default=32, help="FinBERT scoring batch size")
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(

@@ -15,24 +15,64 @@ from utils.datetime_utils import ensure_utc
 from utils.logger import Logger
 from utils.pathlib_utils import ensure_dir
 
+us_holidays = set([
+    pd.Timestamp('2010-01-01'), pd.Timestamp('2010-01-18'), pd.Timestamp('2010-02-15'), pd.Timestamp('2010-05-31'),
+    pd.Timestamp('2010-07-05'), pd.Timestamp('2010-09-06'), pd.Timestamp('2010-10-11'), pd.Timestamp('2010-11-11'),
+    pd.Timestamp('2010-11-25'), pd.Timestamp('2010-12-24'), pd.Timestamp('2010-12-31'), pd.Timestamp('2011-01-17'),
+    pd.Timestamp('2011-02-21'), pd.Timestamp('2011-05-30'), pd.Timestamp('2011-07-04'), pd.Timestamp('2011-09-05'),
+    pd.Timestamp('2011-10-10'), pd.Timestamp('2011-11-11'), pd.Timestamp('2011-11-24'), pd.Timestamp('2011-12-26'),
+    pd.Timestamp('2012-01-02'), pd.Timestamp('2012-01-16'), pd.Timestamp('2012-02-20'), pd.Timestamp('2012-05-28'),
+    pd.Timestamp('2012-07-04'), pd.Timestamp('2012-09-03'), pd.Timestamp('2012-10-08'), pd.Timestamp('2012-11-12'),
+    pd.Timestamp('2012-11-22'), pd.Timestamp('2012-12-25'), pd.Timestamp('2013-01-01'), pd.Timestamp('2013-01-21'),
+    pd.Timestamp('2013-02-18'), pd.Timestamp('2013-05-27'), pd.Timestamp('2013-07-04'), pd.Timestamp('2013-09-02'),
+    pd.Timestamp('2013-10-14'), pd.Timestamp('2013-11-11'), pd.Timestamp('2013-11-28'), pd.Timestamp('2013-12-25'),
+    pd.Timestamp('2014-01-01'), pd.Timestamp('2014-01-20'), pd.Timestamp('2014-02-17'), pd.Timestamp('2014-05-26'),
+    pd.Timestamp('2014-07-04'), pd.Timestamp('2014-09-01'), pd.Timestamp('2014-10-13'), pd.Timestamp('2014-11-11'),
+    pd.Timestamp('2014-11-27'), pd.Timestamp('2014-12-25'), pd.Timestamp('2015-01-01'), pd.Timestamp('2015-01-19'),
+    pd.Timestamp('2015-02-16'), pd.Timestamp('2015-05-25'), pd.Timestamp('2015-07-03'), pd.Timestamp('2015-09-07'),
+    pd.Timestamp('2015-10-12'), pd.Timestamp('2015-11-11'), pd.Timestamp('2015-11-26'), pd.Timestamp('2015-12-25'),
+    pd.Timestamp('2016-01-01'), pd.Timestamp('2016-01-18'), pd.Timestamp('2016-02-15'), pd.Timestamp('2016-05-30'),
+    pd.Timestamp('2016-07-04'), pd.Timestamp('2016-09-05'), pd.Timestamp('2016-10-10'), pd.Timestamp('2016-11-11'),
+    pd.Timestamp('2016-11-24'), pd.Timestamp('2016-12-26'), pd.Timestamp('2017-01-02'), pd.Timestamp('2017-01-16'),
+    pd.Timestamp('2017-02-20'), pd.Timestamp('2017-05-29'), pd.Timestamp('2017-07-04'), pd.Timestamp('2017-09-04'),
+    pd.Timestamp('2017-10-09'), pd.Timestamp('2017-11-10'), pd.Timestamp('2017-11-23'), pd.Timestamp('2017-12-25'),
+    pd.Timestamp('2018-01-01'), pd.Timestamp('2018-01-15'), pd.Timestamp('2018-02-19'), pd.Timestamp('2018-05-28'),
+    pd.Timestamp('2018-07-04'), pd.Timestamp('2018-09-03'), pd.Timestamp('2018-10-08'), pd.Timestamp('2018-11-12'),
+    pd.Timestamp('2018-11-22'), pd.Timestamp('2018-12-25'), pd.Timestamp('2019-01-01'), pd.Timestamp('2019-01-21'),
+    pd.Timestamp('2019-02-18'), pd.Timestamp('2019-05-27'), pd.Timestamp('2019-07-04'), pd.Timestamp('2019-09-02'),
+    pd.Timestamp('2019-10-14'), pd.Timestamp('2019-11-11'), pd.Timestamp('2019-11-28'), pd.Timestamp('2019-12-25'),
+    pd.Timestamp('2020-01-01')
+])
+
+def next_business_day(date):
+    date = pd.to_datetime(date) + pd.Timedelta(days=1)  # Always advance to next day first
+    while date.weekday() >= 5 or date in us_holidays:
+        date += pd.Timedelta(days=1)
+    return date.date()
+
 class SequenceDataset(Dataset):
-    """
-    Produces sequences of length lookback with features at each step,
-    target is next-day Close (scaled separately).
-    """
-    def __init__(self, df: pd.DataFrame, feature_cols: List[str], target_col: str, lookback: int):
+    def __init__(self, df: pd.DataFrame, lookback: int, valid_indices: List[int], sentiment_col: Optional[str], feature_cols: List[str], target_col: str):
+        self.df = df  # full_df, scaled
         self.X = df[feature_cols].values.astype(np.float32)
+        self.sent = df[sentiment_col].values.astype(np.float32) if sentiment_col else None
         self.y = df[target_col].values.astype(np.float32)
-        self.lb = lookback
-        self.n = len(df)
+        self.valid_indices = valid_indices
+        print(f"{len(self.valid_indices)=} out of {len(df)=} samples are valid for lookback={lookback} with sentiment_col={sentiment_col}")
+        self.lookback = lookback
 
     def __len__(self):
-        return max(0, self.n - self.lb)
+        return len(self.valid_indices)
 
     def __getitem__(self, idx):
-        x = self.X[idx: idx + self.lb]  # (lookback, num_features)
-        y = self.y[idx + self.lb]  # scalar target at t+1 (next day)
-        return torch.from_numpy(x), torch.tensor(y)
+        i = self.valid_indices[idx]
+        seq_x = self.X[i - self.lookback + 1: i + 1].flatten()
+        if self.sent is not None:
+            sent_val = self.sent[i]
+            x = np.concatenate(([sent_val], seq_x))
+        else:
+            x = seq_x
+        y = self.y[i]
+        return torch.from_numpy(x).float(), torch.tensor(y).float()
 
 class TrainDataPreprocessor:
     @staticmethod
@@ -50,26 +90,26 @@ class TrainDataPreprocessor:
         if schema.price_low: colmap[schema.price_low] = "Low"
         if schema.price_volume: colmap[schema.price_volume] = "Volume"
         prices = prices.rename(columns=colmap)
-        joined = pd.merge(prices, daily_sentiment, on=["ticker", "trading_date"], how="left").sort_values(
+        # Alignment for non-trading days
+        ds = daily_sentiment
+        ds = ds[ds["ticker"] == ticker].copy()  # Filter to this ticker only
+        ds['next_date'] = ds['trading_date'].apply(next_business_day)
+        ds["trading_date"] = pd.to_datetime(ds["trading_date"], errors="coerce").dt.date
+        # Diagnostic prints
+        joined = pd.merge(prices, ds, on=["ticker", "trading_date"], how="left").sort_values(
             ["ticker", "trading_date"]
         )
-        joined["SentimentScore"] = joined["SentimentScore"].fillna(0.0)
-        joined["N_t"] = joined["N_t"].fillna(0)
         return joined.reset_index(drop=True)
 
     @staticmethod
     def build_supervised_for_ticker(df_all: pd.DataFrame, ticker: str, predict_returns: bool) -> Tuple[pd.DataFrame, List[str]]:
         df = df_all[df_all["ticker"] == ticker].copy().sort_values("trading_date").reset_index(drop=True)
-        sentiment_col = "SentimentScore"
-        price_cols = []
-        for c in ["Open", "High", "Low", "Volume", "Adj Close"]:
-            if c in df.columns:
-                price_cols.append(c)
-        feat_cols = [sentiment_col] + price_cols  # Sentiment first, then prices
+        feat_cols = ["Open", "High", "Low", "Volume", "Adj Close"]
         if predict_returns:
             df['raw_target'] = (df['Adj Close'].shift(-1) - df['Adj Close']) / df['Adj Close']
         else:
             df['raw_target'] = df['Adj Close'].shift(-1)
+        df = df.dropna(subset=['raw_target'])
         return df, feat_cols
 
     @staticmethod
@@ -86,7 +126,7 @@ class TrainDataPreprocessor:
         return train_df.iloc[:cut].copy(), train_df.iloc[cut:].copy()
 
     @staticmethod
-    def make_dataloaders_for_ticker(df: pd.DataFrame, feat_cols: List[str],
+    def make_dataloaders_for_ticker(df: pd.DataFrame, sentiment_col: Optional[str], feat_cols: List[str],
                                     lookback: int, batch_size: int, scale_method: str):
         """
         Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
@@ -108,25 +148,42 @@ class TrainDataPreprocessor:
         # Fit y scaler on TRAIN only
         y_scaler = scaler()
         y_scaler.fit(train[['y']])
-        # Transform y (residuals or raw target)
+        # Transform y (residuals or direct)
         train['y'] = y_scaler.transform(train[['y']]).ravel()
         val['y'] = y_scaler.transform(val[['y']]).ravel()
         test['y'] = y_scaler.transform(test[['y']]).ravel()
+        # Reset indices for integer positioning
+        train = train.reset_index(drop=True)
+        val = val.reset_index(drop=True)
+        test = test.reset_index(drop=True)
+        # Compute valid indices for each split
+        def get_valid_indices(part_df, sent_col, lb):
+            n = len(part_df)
+            has_sent = part_df[sent_col].notna() if sent_col else [True] * n
+            return [i for i in range(n) if has_sent[i] and i >= lb - 1]
+        valid_train = get_valid_indices(train, sentiment_col, lookback)
+        valid_val = get_valid_indices(val, sentiment_col, lookback)
+        valid_test = get_valid_indices(test, sentiment_col, lookback)
         # Datasets
-        ds_train = SequenceDataset(train, feat_cols, 'y', lookback)
-        ds_val = SequenceDataset(val, feat_cols, 'y', lookback)
-        ds_test = SequenceDataset(test, feat_cols, 'y', lookback)
+        ds_train = SequenceDataset(train, lookback, valid_train, sentiment_col, feat_cols, 'y')
+        ds_val = SequenceDataset(val, lookback, valid_val, sentiment_col, feat_cols, 'y')
+        ds_test = SequenceDataset(test, lookback, valid_test, sentiment_col, feat_cols, 'y')
         # Loaders
         dl_train = DataLoader(ds_train, batch_size=batch_size, shuffle=False)
         dl_val = DataLoader(ds_val, batch_size=batch_size, shuffle=False)
         dl_test = DataLoader(ds_test, batch_size=1, shuffle=False)
         # For metrics on original target scale
-        original_y_train = train['raw_target'].iloc[lookback:].values
-        original_y_val = val['raw_target'].iloc[lookback:].values
-        original_y_test = test['raw_target'].iloc[lookback:].values
+        original_y_train = train['raw_target'].iloc[valid_train].values
+        original_y_val = val['raw_target'].iloc[valid_val].values
+        original_y_test = test['raw_target'].iloc[valid_test].values
+        # Dates for valid samples
+        original_dates_train = train['trading_date'].iloc[valid_train].values
+        original_dates_val = val['trading_date'].iloc[valid_val].values
+        original_dates_test = test['trading_date'].iloc[valid_test].values
         return (
             dl_train, dl_val, dl_test, y_scaler,
-            original_y_train, original_y_val, original_y_test
+            original_y_train, original_y_val, original_y_test,
+            original_dates_train, original_dates_val, original_dates_test
         )
 
 class TrainDataLoader(Iterator):
