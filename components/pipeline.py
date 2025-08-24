@@ -25,7 +25,7 @@ class Pipeline:
     def __init__(self):
         args, runtime = Pipeline.argparse()
         # Expand/normalize user paths
-        prices_dir = Path(os.path.expanduser(args.prices)).resolve()
+        prices_dir = Path(os.path.expanduser(args.prices_dir)).resolve()
         fnspid_csv_path = Path(os.path.expanduser(args.fnspid_csv_path)).resolve()
         kaggle_csv_path = Path(os.path.expanduser(args.kaggle_csv_path)).resolve()
         sentiment_csv_path_in = Path(os.path.expanduser(args.sentiment_csv_path_in)).resolve() \
@@ -495,7 +495,7 @@ class Pipeline:
             "--kaggle-csv-path", default="~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
             help="Kaggle News CSV path")
         ap.add_argument(
-            "--prices", default="~/Projects/finBert/FNSPID/Stock_price/full_history",
+            "--prices-dir", default="~/Projects/finBert/FNSPID/Stock_price/full_history",
             help="Prices directory (OHLCV CSVs per ticker)")
         ap.add_argument(
             "--sentiment-csv-path-in", required=False,
