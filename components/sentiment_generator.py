@@ -67,6 +67,9 @@ class SentimentGenerator:
             self.daily_sentiment["trading_date"] = \
                 pd.to_datetime(self.daily_sentiment["trading_date"], errors="coerce").dt.date
         Logger.info(f"Loaded precomputed sentiment from {self.sentiment_csv_path_in}")
+        print(f"{self.daily_sentiment.shape=} {self.daily_sentiment.columns=} {self.daily_sentiment.head()=}")
+        print(f"{self.daily_sentiment[self.daily_sentiment['ticker'] == 'TSLA'].shape=}")
+        print(f"{self.daily_sentiment[self.daily_sentiment['ticker'] == 'TSLA'].head(50)=}")
 
     @staticmethod
     def _generate_daily_sentiment(article_df_: pd.DataFrame, prices_df_: pd.DataFrame,

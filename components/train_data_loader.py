@@ -44,7 +44,7 @@ class TrainDataPreprocessor:
         for c in [schema.price_open, schema.price_high, schema.price_low, schema.price_volume]:
             if c: keep.append(c)
         prices = prices[keep].dropna(subset=["ticker", "trading_date"])
-        colmap = {schema.price_close: "Close"}
+        colmap = {schema.price_close: "Adj Close"}
         if schema.price_open: colmap[schema.price_open] = "Open"
         if schema.price_high: colmap[schema.price_high] = "High"
         if schema.price_low: colmap[schema.price_low] = "Low"
@@ -62,14 +62,14 @@ class TrainDataPreprocessor:
         df = df_all[df_all["ticker"] == ticker].copy().sort_values("trading_date").reset_index(drop=True)
         sentiment_col = "SentimentScore"
         price_cols = []
-        for c in ["Open", "High", "Low", "Volume", "Close"]:
+        for c in ["Open", "High", "Low", "Volume", "Adj Close"]:
             if c in df.columns:
                 price_cols.append(c)
         feat_cols = [sentiment_col] + price_cols  # Sentiment first, then prices
         if predict_returns:
-            df['raw_target'] = (df['Close'] - df['Open']) / df['Open']
+            df['raw_target'] = (df['Adj Close'] - df['Adj Close'].shift(1)) / df['Adj Close'].shift(1)
         else:
-            df['raw_target'] = df['Close']
+            df['raw_target'] = df['Adj Close']
         return df, feat_cols
 
     @staticmethod

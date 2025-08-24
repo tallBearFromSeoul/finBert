@@ -66,7 +66,7 @@ class Pipeline:
             price_open="open",
             price_high="high",
             price_low="low",
-            price_close="close",
+            price_close="adj close",
             price_volume="volume",
         )
         # Determine tickers to run
@@ -525,7 +525,7 @@ class Pipeline:
         ap.add_argument(
             "--lookback", type=int, default=60)
         ap.add_argument(
-            "--epochs", type=int, default=100)
+            "--epochs", type=int, default=1000)
         ap.add_argument(
             "--patience", type=int, default=20)
         ap.add_argument(
