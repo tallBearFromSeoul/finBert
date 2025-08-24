@@ -67,9 +67,9 @@ class TrainDataPreprocessor:
                 price_cols.append(c)
         feat_cols = [sentiment_col] + price_cols  # Sentiment first, then prices
         if predict_returns:
-            df['raw_target'] = (df['Adj Close'] - df['Adj Close'].shift(1)) / df['Adj Close'].shift(1)
+            df['raw_target'] = (df['Adj Close'].shift(-1) - df['Adj Close']) / df['Adj Close']
         else:
-            df['raw_target'] = df['Adj Close']
+            df['raw_target'] = df['Adj Close'].shift(-1)
         return df, feat_cols
 
     @staticmethod

@@ -12,8 +12,8 @@ from utils.logger import Logger
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=256, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=256, hidden_size=128, batch_first=True)
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=512, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=512, hidden_size=128, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
         self.fc1 = nn.Linear(128, 32)
         self.relu = nn.ReLU()
