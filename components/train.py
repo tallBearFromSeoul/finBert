@@ -59,6 +59,7 @@ def train_model(
     original_y_val: np.ndarray,
     epochs: int = 100,
     patience: int = 20,
+    lookback: int = 60,
     lr: float = 1e-3,
     weight_decay: float = 0.01,
     dropout_rate: float = 0.2,

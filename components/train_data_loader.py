@@ -32,8 +32,8 @@ class SequenceDataset(Dataset):
         return max(0, self.n - self.lb)
 
     def __getitem__(self, idx):
-        x = self.X[idx: idx + self.lb] # (lookback, F)
-        y = self.y[idx + self.lb] # scalar target at t+1
+        x = self.X[idx: idx + self.lb]  # (lookback, num_features)
+        y = self.y[idx + self.lb]  # scalar target at t+1 (next day)
         return torch.from_numpy(x), torch.tensor(y)
 
 class TrainDataPreprocessor:
@@ -61,15 +61,13 @@ class TrainDataPreprocessor:
 
     @staticmethod
     def build_supervised_for_ticker(df_all: pd.DataFrame, ticker: str, predict_returns: bool) -> Tuple[pd.DataFrame, List[str]]:
-        """
-        Assemble features (no scaling here) and keep raw Close for later target scaling.
-        """
         df = df_all[df_all["ticker"] == ticker].copy().sort_values("trading_date").reset_index(drop=True)
-        feat_cols = ["SentimentScore"]
-        #TODO: CHANGE
+        sentiment_col = "SentimentScore"
+        price_cols = []
         for c in ["Open", "High", "Low", "Volume", "Close"]:
             if c in df.columns:
-                feat_cols.append(c)
+                price_cols.append(c)
+        feat_cols = [sentiment_col] + price_cols  # Sentiment first, then prices
         if predict_returns:
             df['raw_target'] = (df['Close'] - df['Open']) / df['Open']
         else:

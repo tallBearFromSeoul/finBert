@@ -126,7 +126,9 @@ class Pipeline:
                 arima_pred_val_slice=arima_pred_val_slice,
                 original_y_train=original_y_train,
                 original_y_val=original_y_val,
-                epochs=args_.epochs, patience=args_.patience, lr=1e-3, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                epochs=args_.epochs, patience=args_.patience,
+                lookback=args_.lookback,
+                lr=1e-3, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
                 save_dir=ticker_save_dir,
                 ticker=ticker,
                 load_path=resolved_load_path,
@@ -359,7 +361,7 @@ class Pipeline:
         ap.add_argument(
             "--market-close", default="16:00")
         ap.add_argument(
-            "--batch-size", type=int, default=1, help="FinBERT scoring batch size")
+            "--batch-size", type=int, default=8192, help="FinBERT scoring batch size")
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(
@@ -376,9 +378,9 @@ class Pipeline:
             "--load-dir", default=None,
             help="Path to a weights file (.pt/.pth) or a directory containing saved weights to initialize training from.")
         ap.add_argument(
-            "--dropout-rate", type=float, default=0.2, help="Dropout rate for LSTM layers")
+            "--dropout-rate", type=float, default=0.0, help="Dropout rate for LSTM layers")
         ap.add_argument(
-            "--weight-decay", type=float, default=0.01, help="Weight decay for Adam optimizer")
+            "--weight-decay", type=float, default=0.00, help="Weight decay for Adam optimizer")
         ap.add_argument(
             "--use-arima", action="store_true", default=False, help="Use hybrid ARIMA-LSTM approach")
         ap.add_argument(
