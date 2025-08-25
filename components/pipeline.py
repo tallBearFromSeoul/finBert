@@ -250,11 +250,12 @@ class Pipeline:
                 )
             else:
                 # LSTM variants
-                sentiment_col: Optional[str] = 'SentimentScore' if args_.model == 'finbert-lstm' else None
+                sentiment_col = 'SentimentScore'
+                use_sentiment_in_features = args_.model == 'finbert-lstm'
                 (dl_train, dl_val, dl_test, y_scaler,
                  original_y_train, original_y_val, original_y_test,
                  dates_train, dates_val, dates_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                    df_supervised, sentiment_col,
+                    df_supervised, sentiment_col, use_sentiment_in_features,
                     feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
                     scale_method=args_.scale_method
                 )
@@ -270,7 +271,7 @@ class Pipeline:
                         Logger.info(f"--load-dir provided, found weights {ticker} {cand} in {load_dir_}")
                     else:
                         Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
-                input_size = len(feat_cols) * args_.lookback + (1 if sentiment_col else 0)
+                input_size = len(feat_cols) * args_.lookback + (1 if use_sentiment_in_features else 0)
                 # Train (now passes y_scaler, returns both scaled and price metrics)
                 model, train_hist, val_hist, best_info, price_hist = train_model(
                     dl_train, dl_val, input_size=input_size,
@@ -521,7 +522,7 @@ class Pipeline:
         ap.add_argument(
             "--market-close", default="16:30")
         ap.add_argument(
-            "--batch-size", type=int, default=8, help="FinBERT scoring batch size")
+            "--batch-size", type=int, default=1, help="FinBERT scoring batch size")
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(
