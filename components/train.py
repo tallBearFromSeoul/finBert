@@ -3,6 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch import nn
 from torch.utils.data import DataLoader
 from typing import Dict, List, Optional
+import math
 import numpy as np
 import torch
 
@@ -12,12 +13,13 @@ from utils.logger import Logger
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=512, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=512, hidden_size=512, batch_first=True)
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=256, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=256, hidden_size=256, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(512, 25)
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 64)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(25, 1)
+        self.fc_out = nn.Linear(64, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
@@ -27,7 +29,7 @@ class LSTMRegressor(nn.Module):
         out2, _ = self.lstm2(out1) # (B, T, 512)
         out2 = self.dropout(out2)
         last = out2[:, -1, :] # (B, 512)
-        z = self.relu(self.fc1(last))
+        z = self.relu(self.fc2(self.relu(self.fc1(last))))
         y = self.fc_out(z).squeeze(-1)
         return y
 
