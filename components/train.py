@@ -94,10 +94,10 @@ class TransformerRegressor(nn.Module):
 class TabMLPRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.fc1 = nn.Linear(input_size, 512)
-        self.fc2 = nn.Linear(512, 512)
+        self.fc1 = nn.Linear(input_size, 256)
+        self.fc2 = nn.Linear(256, 256)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc3 = nn.Linear(512, 25)
+        self.fc3 = nn.Linear(256, 25)
         self.relu = nn.ReLU()
         self.fc_out = nn.Linear(25, 1)
     def forward(self, x):
