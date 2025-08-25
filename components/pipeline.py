@@ -521,7 +521,7 @@ class Pipeline:
         ap.add_argument(
             "--market-close", default="16:30")
         ap.add_argument(
-            "--batch-size", type=int, default=32, help="FinBERT scoring batch size")
+            "--batch-size", type=int, default=8, help="FinBERT scoring batch size")
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(

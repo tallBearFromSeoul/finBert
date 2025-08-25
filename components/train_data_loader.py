@@ -128,62 +128,54 @@ class TrainDataPreprocessor:
     @staticmethod
     def make_dataloaders_for_ticker(df: pd.DataFrame, sentiment_col: Optional[str], feat_cols: List[str],
                                     lookback: int, batch_size: int, scale_method: str):
-        """
-        Chronological split; fit scalers on TRAIN only; transform all splits; build PyTorch loaders.
-        """
-        scaler = MinMaxScaler if scale_method == "minmax" else StandardScaler
-        # Splits
-        train_all, test = TrainDataPreprocessor._temporal_split(df, train_ratio=0.9)
-        train, val = TrainDataPreprocessor._split_train_val(train_all, val_ratio_within_train=0.1)
-        # Fit X scaler on TRAIN only
-        x_scaler = scaler()
-        x_scaler.fit(train[feat_cols].astype(float))
-        # Transform X across splits
-        for part in [train, val, test]:
-            part[feat_cols] = part[feat_cols].astype(float)
-            part.loc[:, feat_cols] = x_scaler.transform(part[feat_cols])
-        train['y'] = train['raw_target']
-        val['y'] = val['raw_target']
-        test['y'] = test['raw_target']
-        # Fit y scaler on TRAIN only
-        y_scaler = scaler()
-        y_scaler.fit(train[['y']])
-        # Transform y (residuals or direct)
-        train['y'] = y_scaler.transform(train[['y']]).ravel()
-        val['y'] = y_scaler.transform(val[['y']]).ravel()
-        test['y'] = y_scaler.transform(test[['y']]).ravel()
-        # Reset indices for integer positioning
-        train = train.reset_index(drop=True)
-        val = val.reset_index(drop=True)
-        test = test.reset_index(drop=True)
-        # Compute valid indices for each split
-        def get_valid_indices(part_df, sent_col, lb):
-            n = len(part_df)
-            has_sent = part_df[sent_col].notna() if sent_col else [True] * n
-            return [i for i in range(n) if has_sent[i] and i >= lb - 1]
-        valid_train = get_valid_indices(train, sentiment_col, lookback)
-        valid_val = get_valid_indices(val, sentiment_col, lookback)
-        valid_test = get_valid_indices(test, sentiment_col, lookback)
-        # Datasets
-        ds_train = SequenceDataset(train, lookback, valid_train, sentiment_col, feat_cols, 'y')
-        ds_val = SequenceDataset(val, lookback, valid_val, sentiment_col, feat_cols, 'y')
-        ds_test = SequenceDataset(test, lookback, valid_test, sentiment_col, feat_cols, 'y')
-        # Loaders
+        scaler_cls = MinMaxScaler if scale_method == "minmax" else StandardScaler
+        n = len(df)
+        has_sent = df[sentiment_col].notna() if sentiment_col else pd.Series([True] * n, index=df.index)
+        valid_indices = [i for i in range(n) if has_sent[i] and i >= lookback - 1]
+        num_valid = len(valid_indices)
+        if num_valid == 0:
+            raise ValueError("No valid samples found")
+        train_ratio = 0.9
+        train_all_valid_num = int(math.floor(num_valid * train_ratio))
+        val_ratio_within_train = 0.1
+        train_valid_num = int(math.floor(train_all_valid_num * (1 - val_ratio_within_train)))
+        valid_train = valid_indices[:train_valid_num]
+        valid_val = valid_indices[train_valid_num:train_all_valid_num]
+        valid_test = valid_indices[train_all_valid_num:]
+        if valid_train:
+            train_start_row = max(0, min(i - lookback + 1 for i in valid_train))
+            train_end_row = max(valid_train) + 1
+        else:
+            train_start_row = 0
+            train_end_row = 0
+        train_feat_df = df.iloc[train_start_row:train_end_row]
+        x_scaler = scaler_cls()
+        x_scaler.fit(train_feat_df[feat_cols].astype(float))
+        df[feat_cols] = x_scaler.transform(df[feat_cols].astype(float))
+        df['y'] = df['raw_target']
+        if valid_train:
+            y_train = df['raw_target'].iloc[valid_train].values.reshape(-1, 1)
+            y_scaler = scaler_cls()
+            y_scaler.fit(y_train)
+            df['y'] = y_scaler.transform(df[['y']]).ravel()
+        else:
+            raise ValueError("No train samples")
+        ds_train = SequenceDataset(df, lookback, valid_train, sentiment_col, feat_cols, 'y')
+        ds_val = SequenceDataset(df, lookback, valid_val, sentiment_col, feat_cols, 'y')
+        ds_test = SequenceDataset(df, lookback, valid_test, sentiment_col, feat_cols, 'y')
         dl_train = DataLoader(ds_train, batch_size=batch_size, shuffle=False)
         dl_val = DataLoader(ds_val, batch_size=batch_size, shuffle=False)
         dl_test = DataLoader(ds_test, batch_size=1, shuffle=False)
-        # For metrics on original target scale
-        original_y_train = train['raw_target'].iloc[valid_train].values
-        original_y_val = val['raw_target'].iloc[valid_val].values
-        original_y_test = test['raw_target'].iloc[valid_test].values
-        # Dates for valid samples
-        original_dates_train = train['trading_date'].iloc[valid_train].values
-        original_dates_val = val['trading_date'].iloc[valid_val].values
-        original_dates_test = test['trading_date'].iloc[valid_test].values
+        original_y_train = df['raw_target'].iloc[valid_train].values if valid_train else np.array([])
+        original_y_val = df['raw_target'].iloc[valid_val].values if valid_val else np.array([])
+        original_y_test = df['raw_target'].iloc[valid_test].values if valid_test else np.array([])
+        dates_train = df['trading_date'].iloc[valid_train].values if valid_train else np.array([])
+        dates_val = df['trading_date'].iloc[valid_val].values if valid_val else np.array([])
+        dates_test = df['trading_date'].iloc[valid_test].values if valid_test else np.array([])
         return (
             dl_train, dl_val, dl_test, y_scaler,
             original_y_train, original_y_val, original_y_test,
-            original_dates_train, original_dates_val, original_dates_test
+            dates_train, dates_val, dates_test
         )
 
 class TrainDataLoader(Iterator):
