@@ -8,7 +8,7 @@ import torch
 
 from utils.logger import Logger
 
-# ----------------------------- Model ---------------------------------------- #
+# ----------------------------- Models ---------------------------------------- #
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
@@ -22,12 +22,90 @@ class LSTMRegressor(nn.Module):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
         # x: (B, T, F)
-        out1, _ = self.lstm1(x) # (B, T, 128)
+        out1, _ = self.lstm1(x) # (B, T, 512)
         out1 = self.dropout(out1)
-        out2, _ = self.lstm2(out1) # (B, T, 128)
+        out2, _ = self.lstm2(out1) # (B, T, 512)
         out2 = self.dropout(out2)
-        last = out2[:, -1, :] # (B, 128)
+        last = out2[:, -1, :] # (B, 512)
         z = self.relu(self.fc1(last))
+        y = self.fc_out(z).squeeze(-1)
+        return y
+
+class RNNRegressor(nn.Module):
+    def __init__(self, input_size: int, dropout_rate: float = 0.0):
+        super().__init__()
+        self.rnn1 = nn.RNN(input_size=input_size, hidden_size=512, batch_first=True)
+        self.rnn2 = nn.RNN(input_size=512, hidden_size=512, batch_first=True)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc1 = nn.Linear(512, 25)
+        self.relu = nn.ReLU()
+        self.fc_out = nn.Linear(25, 1)
+    def forward(self, x):
+        if x.dim() == 2:
+            x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
+        # x: (B, T, F)
+        out1, _ = self.rnn1(x) # (B, T, 512)
+        out1 = self.dropout(out1)
+        out2, _ = self.rnn2(out1) # (B, T, 512)
+        out2 = self.dropout(out2)
+        last = out2[:, -1, :] # (B, 512)
+        z = self.relu(self.fc1(last))
+        y = self.fc_out(z).squeeze(-1)
+        return y
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+    def forward(self, x):
+        x = x + self.pe[:x.size(1), :]
+        return x
+
+class TransformerRegressor(nn.Module):
+    def __init__(self, input_size: int, dropout_rate: float = 0.0):
+        super().__init__()
+        d_model = 64
+        self.embed = nn.Linear(input_size, d_model)
+        self.pos_encoder = PositionalEncoding(d_model)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=8, dim_feedforward=512, dropout=dropout_rate, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.fc1 = nn.Linear(d_model, 25)
+        self.relu = nn.ReLU()
+        self.fc_out = nn.Linear(25, 1)
+    def forward(self, x):
+        if x.dim() == 2:
+            x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
+        # x: (B, T, F)
+        x = self.embed(x) # (B, T, 64)
+        x = self.pos_encoder(x)
+        out = self.transformer(x) # (B, T, 64)
+        last = out[:, -1, :] # (B, 64)
+        z = self.relu(self.fc1(last))
+        y = self.fc_out(z).squeeze(-1)
+        return y
+
+class TabMLPRegressor(nn.Module):
+    def __init__(self, input_size: int, dropout_rate: float = 0.0):
+        super().__init__()
+        self.fc1 = nn.Linear(input_size, 512)
+        self.fc2 = nn.Linear(512, 512)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc3 = nn.Linear(512, 25)
+        self.relu = nn.ReLU()
+        self.fc_out = nn.Linear(25, 1)
+    def forward(self, x):
+        # x: (B, flat_dim)
+        x = x.view(x.size(0), -1)
+        z = self.relu(self.fc1(x))
+        z = self.dropout(z)
+        z = self.relu(self.fc2(z))
+        z = self.dropout(z)
+        z = self.relu(self.fc3(z))
         y = self.fc_out(z).squeeze(-1)
         return y
 
@@ -55,6 +133,7 @@ def train_model(
     input_size: int,
     original_y_train: np.ndarray,
     original_y_val: np.ndarray,
+    model_type: str,
     epochs: int = 100,
     patience: int = 20,
     lookback: int = 60,
@@ -75,7 +154,16 @@ def train_model(
     if y_scaler is None:
         raise ValueError("train_model: y_scaler must be provided to compute price-scale metrics.")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = LSTMRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    if model_type == "lstm":
+        model = LSTMRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    elif model_type == "rnn":
+        model = RNNRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    elif model_type == "transformer":
+        model = TransformerRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    elif model_type == "tabmlp":
+        model = TabMLPRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    else:
+        raise ValueError(f"Unknown model_type: {model_type}")
     # Optionally load initial weights
     if load_path is not None:
         Logger.info(f"Loading initial weights from: {load_path}")

@@ -3,13 +3,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import argparse
 import json
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.stattools import adfuller, acf, pacf
+import torch
 
 from components.sentiment_generator import SentimentGenerator
 from components.data_paths import DataPaths
@@ -24,6 +22,16 @@ from utils.pathlib_utils import ensure_dir
 class Pipeline:
     def __init__(self):
         args, runtime = Pipeline.argparse()
+        if args.seed is not None:
+            import random
+            random.seed(args.seed)
+            np.random.seed(args.seed)
+            torch.manual_seed(args.seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(args.seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            Logger.info(f"Set deterministic seeds to {args.seed}")
         # Expand/normalize user paths
         prices_dir = Path(os.path.expanduser(args.prices_dir)).resolve()
         fnspid_csv_path = Path(os.path.expanduser(args.fnspid_csv_path)).resolve()
@@ -85,7 +93,6 @@ class Pipeline:
             start_date, end_date, (out_root / args.fine_tune_dir) if args.fine_tune else None)
         self.train(tickers, sentiment_generator.daily_sentiment, prices_dir, schema,
                    start_date, end_date, args, out_root, saved_root, eval_json_path, load_dir)
-
     @staticmethod
     def train(
         tickers_: List[str], daily_sentiment_: pd.DataFrame, prices_dir_: Path,
@@ -107,196 +114,55 @@ class Pipeline:
             df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
                 df_joined, ticker=ticker, predict_returns=args_.predict_returns
             )
-            train_ratio = 0.9
-            train_all_len = int(math.floor(len(df_supervised) * train_ratio))
-            val_ratio_within_train = 0.1
-            train_len = int(math.floor(train_all_len * (1 - val_ratio_within_train)))
-            if args_.model == 'arima':
-                # Compute splits without lookback/dataloaders
-                train_df = df_supervised.iloc[:train_len].copy()
-                val_df = df_supervised.iloc[train_len:train_all_len].copy()
-                test_df = df_supervised.iloc[train_all_len:].copy()
+            sentiment_col = 'SentimentScore'
+            use_sentiment_in_features = 'finbert' in args_.model.lower()
+            (dl_train, dl_val, dl_test, y_scaler,
+             original_y_train, original_y_val, original_y_test,
+             dates_train, dates_val, dates_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
+                df_supervised, sentiment_col, use_sentiment_in_features,
+                feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
+                scale_method=args_.scale_method
+            )
 
-                use_log = not args_.predict_returns
-                if use_log:
-                    train_target = np.log(train_df['raw_target'])
-                    train_all_target = np.log(df_supervised.iloc[:train_all_len]['raw_target'])
+            # Prepare saved weights dir for this ticker
+            ticker_save_dir = ensure_dir(saved_root_ / ticker)
+            # Resolve initial load path if provided
+            resolved_load_path = None
+            if load_dir_ is not None:
+                cand = Pipeline.find_weight_file_for_ticker(load_dir_, ticker)
+                if cand:
+                    resolved_load_path = cand
+                    Logger.info(f"--load-dir provided, found weights {ticker} {cand} in {load_dir_}")
                 else:
-                    train_target = train_df['raw_target']
-                    train_all_target = df_supervised.iloc[:train_all_len]['raw_target']
-
-                # Determine d: differencing order for stationarity
-                def get_differencing_order(series, max_d=2):
-                    d = 0
-                    p_val = adfuller(series)[1]
-                    while p_val > 0.05 and d < max_d:
-                        series = np.diff(series)
-                        p_val = adfuller(series)[1]
-                        d += 1
-                    return d
-                d = get_differencing_order(train_target)
-                # Compute ACF and PACF on differenced series
-                diff_series = np.diff(train_target, n=d) if d > 0 else train_target
-                acf_vals = acf(diff_series, nlags=20, fft=False)
-                pacf_vals = pacf(diff_series, nlags=20)
-                # Determine q: first lag where ACF cuts off (below confidence interval ~2/sqrt(n))
-                conf_int = 2 / np.sqrt(len(diff_series))
-                q_candidates = [lag for lag in range(1, 6) if abs(acf_vals[lag]) < conf_int]
-                q = q_candidates[0] if q_candidates else 1  # Default to 1 if no clear cutoff
-                # Determine p: first lag where PACF cuts off
-                p_candidates = [lag for lag in range(1, 6) if abs(pacf_vals[lag]) < conf_int]
-                p = p_candidates[0] if p_candidates else 1  # Default to 1 if no clear cutoff
-                # Fine-tune with AIC: grid search around candidates
-                best_aic = np.inf
-                best_order = (p, d, q)
-                for pp in range(max(0, p-1), p+2):
-                    for qq in range(max(0, q-1), q+2):
-                        try:
-                            model = ARIMA(train_target, order=(pp, d, qq)).fit()
-                            if model.aic < best_aic:
-                                best_aic = model.aic
-                                best_order = (pp, d, qq)
-                        except:
-                            continue
-                arima_order = best_order
-                Logger.info(f"[{ticker}] Selected ARIMA order: {arima_order} based on ACF/PACF and AIC")
-                # Fit ARIMA
-                arima_order = (1, 1, 2)
-                arima_fit = ARIMA(train_target, order=arima_order).fit()
-                arima_pred_train = arima_fit.fittedvalues.values
-                arima_pred_val = arima_fit.forecast(steps=len(val_df)).values
-                arima_fit_full = ARIMA(train_all_target, order=arima_order).fit()
-                arima_pred_test = arima_fit_full.forecast(steps=len(test_df)).values
-                if use_log:
-                    arima_pred_train = np.exp(arima_pred_train)
-                    arima_pred_val = np.exp(arima_pred_val)
-                    arima_pred_test = np.exp(arima_pred_test)
-                else:
-                    arima_pred_train = arima_pred_train
-                    arima_pred_val = arima_pred_val
-                    arima_pred_test = arima_pred_test
-                # Compute price-scale metrics (no scaled for ARIMA)
-                train_mse = mse(train_df['raw_target'].values, arima_pred_train)
-                train_mae = mae(train_df['raw_target'].values, arima_pred_train)
-                train_rmse = rmse(train_df['raw_target'].values, arima_pred_train)
-                val_mse = mse(val_df['raw_target'].values, arima_pred_val)
-                val_mae = mae(val_df['raw_target'].values, arima_pred_val)
-                val_rmse = rmse(val_df['raw_target'].values, arima_pred_val)
-                test_mse = mse(test_df['raw_target'].values, arima_pred_test)
-                test_mae = mae(test_df['raw_target'].values, arima_pred_test)
-                test_rmse = rmse(test_df['raw_target'].values, arima_pred_test)
-                # Set outputs to match LSTM structure
-                model = None
-                train_hist = []
-                val_hist = []
-                best_info = {
-                    "best_epoch": 0,
-                    "best_train_mse": train_mse,
-                    "best_val_mse": val_mse,
-                    "best_train_mae": train_mae,
-                    "best_val_mae": val_mae,
-                    "best_train_rmse": train_rmse,
-                    "best_val_rmse": val_rmse,
-                    "best_train_mse_scaled": float("nan"),
-                    "best_val_mse_scaled": float("nan"),
-                    "best_path": "",
-                    "epochs_run": 0,
-                    "final_train_mse": train_mse,
-                    "final_val_mse": val_mse,
-                    "final_train_mse_scaled": float("nan"),
-                    "final_val_mse_scaled": float("nan"),
-                }
-                price_hist = {
-                    "train_mse": [train_mse],
-                    "val_mse": [val_mse],
-                    "train_mae": [train_mae],
-                    "val_mae": [val_mae],
-                    "train_rmse": [train_rmse],
-                    "val_rmse": [val_rmse],
-                }
-                metrics = {
-                    "test_MSE": test_mse,
-                    "test_MAE": test_mae,
-                    "test_RMSE": test_rmse,
-                    "test_MSE_scaled": float("nan"),
-                    "test_MAE_scaled": float("nan"),
-                    "test_RMSE_scaled": float("nan"),
-                    "y_true": test_df['raw_target'].values,
-                    "y_pred": arima_pred_test,
-                }
-                lb = 0
-                y_true_train = train_df['raw_target'].values
-                y_pred_train = arima_pred_train
-                y_true_val = val_df['raw_target'].values
-                y_pred_val = arima_pred_val
-                y_true_test = test_df['raw_target'].values
-                y_pred_test = arima_pred_test
-                dates_train = train_df['trading_date'].values
-                dates_val = val_df['trading_date'].values
-                dates_test = test_df['trading_date'].values
-                # No training curve for ARIMA
-                # Test dates without lookback
-                test_start_idx = train_all_len
-                test_dates = df_supervised['trading_date'].iloc[test_start_idx:].values
-                # Log
-                Logger.info(
-                    f"[{ticker}] Train (price) MSE={train_mse:.6f} | MAE={train_mae:.6f} | RMSE={train_rmse:.6f}"
-                )
-                Logger.info(
-                    f"[{ticker}] Val (price) MSE={val_mse:.6f} | MAE={val_mae:.6f} | RMSE={val_rmse:.6f}"
-                )
-                Logger.info(
-                    f"[{ticker}] Test (price) MSE={test_mse:.6f} | MAE={test_mae:.6f} | RMSE={test_rmse:.6f}"
-                )
-            else:
-                # LSTM variants
-                sentiment_col = 'SentimentScore'
-                use_sentiment_in_features = args_.model == 'finbert-lstm'
-                (dl_train, dl_val, dl_test, y_scaler,
-                 original_y_train, original_y_val, original_y_test,
-                 dates_train, dates_val, dates_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
-                    df_supervised, sentiment_col, use_sentiment_in_features,
-                    feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
-                    scale_method=args_.scale_method
-                )
-
-                # Prepare saved weights dir for this ticker
-                ticker_save_dir = ensure_dir(saved_root_ / ticker)
-                # Resolve initial load path if provided
-                resolved_load_path = None
-                if load_dir_ is not None:
-                    cand = Pipeline.find_weight_file_for_ticker(load_dir_, ticker)
-                    if cand:
-                        resolved_load_path = cand
-                        Logger.info(f"--load-dir provided, found weights {ticker} {cand} in {load_dir_}")
-                    else:
-                        Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
-                input_size = len(feat_cols) * args_.lookback + (1 if use_sentiment_in_features else 0)
-                # Train (now passes y_scaler, returns both scaled and price metrics)
-                model, train_hist, val_hist, best_info, price_hist = train_model(
-                    dl_train, dl_val, input_size=input_size,
-                    original_y_train=original_y_train,
-                    original_y_val=original_y_val,
-                    epochs=args_.epochs, patience=args_.patience,
-                    lookback=args_.lookback,
-                    lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
-                    save_dir=ticker_save_dir,
-                    ticker=ticker,
-                    load_path=resolved_load_path,
-                    y_scaler=y_scaler
-                )
-                # Evaluate
-                metrics_train = evaluate(model, dl_train, y_scaler, original_y_train)
-                metrics_val = evaluate(model, dl_val, y_scaler, original_y_val)
-                metrics_test = evaluate(model, dl_test, y_scaler, original_y_test)
-                metrics = metrics_test
-                lb = args_.lookback
-                y_true_train = metrics_train['y_true']
-                y_pred_train = metrics_train['y_pred']
-                y_true_val = metrics_val['y_true']
-                y_pred_val = metrics_val['y_pred']
-                y_true_test = metrics_test['y_true']
-                y_pred_test = metrics_test['y_pred']
+                    Logger.warning(f"--load-dir provided, but no weights found for {ticker} in {load_dir_}")
+            input_size = len(feat_cols) * args_.lookback + (1 if use_sentiment_in_features else 0)
+            model_type = args_.model.split('-')[-1]
+            # Train (now passes y_scaler, returns both scaled and price metrics)
+            model, train_hist, val_hist, best_info, price_hist = train_model(
+                dl_train, dl_val, input_size=input_size,
+                original_y_train=original_y_train,
+                original_y_val=original_y_val,
+                model_type=model_type,
+                epochs=args_.epochs, patience=args_.patience,
+                lookback=args_.lookback,
+                lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                save_dir=ticker_save_dir,
+                ticker=ticker,
+                load_path=resolved_load_path,
+                y_scaler=y_scaler
+            )
+            # Evaluate
+            metrics_train = evaluate(model, dl_train, y_scaler, original_y_train)
+            metrics_val = evaluate(model, dl_val, y_scaler, original_y_val)
+            metrics_test = evaluate(model, dl_test, y_scaler, original_y_test)
+            metrics = metrics_test
+            lb = args_.lookback
+            y_true_train = metrics_train['y_true']
+            y_pred_train = metrics_train['y_pred']
+            y_true_val = metrics_val['y_true']
+            y_pred_val = metrics_val['y_pred']
+            y_true_test = metrics_test['y_true']
+            y_pred_test = metrics_test['y_pred']
 
             # Determine target type for prediction plot
             if args_.predict_returns:
@@ -330,22 +196,21 @@ class Pipeline:
                 f"Best (price) Train MSE={best_info['best_train_mse']:.6f} | "
                 f"Best (price) Val MSE={best_info['best_val_mse']:.6f} | Saved at={best_info['best_path']}"
             )
-            if args_.model != 'arima':
-                curve_data = {
-                    "epoch": np.arange(1, len(train_hist) + 1, dtype=int).tolist(),
-                    # scaled losses (training objective)
-                    "train_mse_scaled": train_hist,
-                    "val_mse_scaled": val_hist,
-                    # price-scale metrics (comparable to test)
-                    "train_mse_price": price_hist["train_mse"],
-                    "val_mse_price": price_hist["val_mse"],
-                    "train_mae_price": price_hist["train_mae"],
-                    "val_mae_price": price_hist["val_mae"],
-                    "train_rmse_price": price_hist["train_rmse"],
-                    "val_rmse_price": price_hist["val_rmse"],
-                }
-                with open(out_root_ / f"{ticker}_{args_.model}_training_curve.json", 'w') as f:  # CHANGED: Include model in filename
-                    json.dump(curve_data, f, indent=4)
+            curve_data = {
+                "epoch": np.arange(1, len(train_hist) + 1, dtype=int).tolist(),
+                # scaled losses (training objective)
+                "train_mse_scaled": train_hist,
+                "val_mse_scaled": val_hist,
+                # price-scale metrics (comparable to test)
+                "train_mse_price": price_hist["train_mse"],
+                "val_mse_price": price_hist["val_mse"],
+                "train_mae_price": price_hist["train_mae"],
+                "val_mae_price": price_hist["val_mae"],
+                "train_rmse_price": price_hist["train_rmse"],
+                "val_rmse_price": price_hist["val_rmse"],
+            }
+            with open(out_root_ / f"{ticker}_{args_.model}_training_curve.json", 'w') as f:  # CHANGED: Include model in filename
+                json.dump(curve_data, f, indent=4)
             # Evaluation rows (consistent price-scale metrics, plus scaled for reference)
             eval_rows.append({
                 "ticker": ticker,
@@ -530,7 +395,7 @@ class Pipeline:
         ap.add_argument(
             "--epochs", type=int, default=1000)
         ap.add_argument(
-            "--patience", type=int, default=20)
+            "--patience", type=int, default=40)
         ap.add_argument(
             "--use-bodies", action="store_true",
             help="Include article bodies in sentiment analysis if available")
@@ -548,8 +413,11 @@ class Pipeline:
             "--scale-method", default="minmax", choices=["minmax", "standard"],
             help="Use minmax or standard scaling for features")
         ap.add_argument(
-            "--model", default="finbert-lstm", choices=["arima", "lstm", "finbert-lstm"],
-            help="Model to use: 'arima' (pure ARIMA), 'lstm' (pure LSTM without sentiment), 'finbert_lstm' (LSTM with FinBERT sentiment)")
+            "--model", default="finbert-lstm", choices=["lstm", "rnn", "transformer", "tabmlp", "finbert-lstm", "finbert-rnn", "finbert-transformer", "finbert-tabmlp"],
+            help="Model to use: 'lstm', 'rnn', 'transformer', 'tabmlp', or their finbert variants")
+        ap.add_argument(
+            "--seed", type=int, default=1254, #1254
+            help="Preset seed for deterministic training (sets Python, NumPy, and PyTorch seeds)")
         return ap.parse_args(), runtime
 
 # standard vs minmax
