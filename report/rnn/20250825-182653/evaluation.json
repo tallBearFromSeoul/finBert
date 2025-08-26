@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "NFLX",
+        "best_epoch": 1,
+        "best_train_mse": 0.0006700936196161978,
+        "best_val_mse": 0.0005960040174912462,
+        "best_train_mae": 0.017793532518514524,
+        "best_val_mae": 0.017061600787436973,
+        "best_train_rmse": 0.025886166568578627,
+        "best_val_rmse": 0.02441319351275548,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250825-182653/saved_weights/NFLX/NFLX_best-epoch001.pt",
+        "test_MSE": 0.0003554257041171744,
+        "test_MAE": 0.014304881229742961,
+        "test_RMSE": 0.018852737310989468,
+        "best_train_mse_scaled": 1.022137178596819,
+        "best_val_mse_scaled": 0.9091235377263029,
+        "test_MSE_scaled": 0.5421538352966309,
+        "test_MAE_scaled": 0.5586903095245361,
+        "test_RMSE_scaled": 0.7363109637215997,
+        "epochs_run": 41,
+        "final_train_mse": 0.0002691527798801363,
+        "final_val_mse": 0.0009325275481576676,
+        "final_train_mse_scaled": 0.4105561555828129,
+        "final_val_mse_scaled": 1.4224446407181228
+    }
+]

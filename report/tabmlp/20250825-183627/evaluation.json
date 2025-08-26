@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "HD",
+        "best_epoch": 43,
+        "best_train_mse": 6.206808928589786e-05,
+        "best_val_mse": 0.00022083694055907629,
+        "best_train_mae": 0.005828277969088779,
+        "best_val_mae": 0.010068873712635675,
+        "best_train_rmse": 0.007878330361561253,
+        "best_val_rmse": 0.014860583452848556,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250825-183627/saved_weights/HD/HD_best-epoch043.pt",
+        "test_MSE": 0.0001892238720762373,
+        "test_MAE": 0.010180139755895434,
+        "test_RMSE": 0.013755866823876904,
+        "best_train_mse_scaled": 0.3439501044275043,
+        "best_val_mse_scaled": 1.2237671385817286,
+        "test_MSE_scaled": 1.0485832691192627,
+        "test_MAE_scaled": 0.7578222155570984,
+        "test_RMSE_scaled": 1.0240035493684887,
+        "epochs_run": 83,
+        "final_train_mse": 3.7654872498150025e-05,
+        "final_val_mse": 0.0002531593467169096,
+        "final_train_mse_scaled": 0.20866434713861462,
+        "final_val_mse_scaled": 1.4028816066650418
+    }
+]
