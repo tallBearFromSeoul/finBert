@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "EBAY",
+        "best_epoch": 12,
+        "best_train_mse": 0.00034917794171519546,
+        "best_val_mse": 0.0001737963650569488,
+        "best_train_mae": 0.012981936810109982,
+        "best_val_mae": 0.009966226863672292,
+        "best_train_rmse": 0.018686303586188346,
+        "best_val_rmse": 0.013183184936006504,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250826-072518/saved_weights/EBAY/EBAY_best-epoch012.pt",
+        "test_MSE": 0.0004714572916850975,
+        "test_MAE": 0.014435016059581168,
+        "test_RMSE": 0.021713067302550727,
+        "best_train_mse_scaled": 0.0052887335798384736,
+        "best_val_mse_scaled": 0.002632361735510358,
+        "test_MSE_scaled": 0.007140805944800377,
+        "test_MAE_scaled": 0.05617844685912132,
+        "test_RMSE_scaled": 0.084503289550173,
+        "epochs_run": 52,
+        "final_train_mse": 0.0003174691906246852,
+        "final_val_mse": 0.00019469679099076028,
+        "final_train_mse_scaled": 0.0048084651863546475,
+        "final_val_mse_scaled": 0.0029489245772140295
+    }
+]

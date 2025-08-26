@@ -18,6 +18,61 @@ Visualizations for each ticker include: time series of SentimentScore (point siz
 ![Stock Returns Distribution Plot](path/to/returns_distribution.png)
 ![Sentiment Score Data Visualization - Stock 1 [Ticker, e.g., MSFT]](path/to/stock1_sentiment_visualization.png)
 ![Sentiment Score Data Visualization - Stock 2 [Ticker, e.g., AAPL]](path/to/stock2_sentiment_visualization.png)
+
+Top 50 tickers ranked by number of datapoints (N):
+1. Ticker: DAL, N: 922, Min: -0.11, Max: 0.82, Mean: 0.03, Filename: DAL_sentiment_analysis_N922_min-0.11_max0.82_mean0.03.png
+2. Ticker: BMY, N: 916, Min: -0.08, Max: 0.81, Mean: 0.04, Filename: BMY_sentiment_analysis_N916_min-0.08_max0.81_mean0.04.png
+3. Ticker: EBAY, N: 885, Min: -0.1, Max: 0.81, Mean: 0.0, Filename: EBAY_sentiment_analysis_N885_min-0.10_max0.81_mean0.00.png
+4. Ticker: BABA, N: 868, Min: -0.07, Max: 0.4, Mean: 0.02, Filename: BABA_sentiment_analysis_N868_min-0.07_max0.40_mean0.02.png
+5. Ticker: EWI, N: 866, Min: -0.07, Max: 0.76, Mean: 0.08, Filename: EWI_sentiment_analysis_N866_min-0.07_max0.76_mean0.08.png
+6. Ticker: JNJ, N: 856, Min: -0.1, Max: 0.78, Mean: 0.03, Filename: JNJ_sentiment_analysis_N856_min-0.10_max0.78_mean0.03.png
+7. Ticker: MRK, N: 855, Min: -0.09, Max: 0.81, Mean: 0.02, Filename: MRK_sentiment_analysis_N855_min-0.09_max0.81_mean0.02.png
+8. Ticker: LMT, N: 849, Min: -0.1, Max: 0.82, Mean: 0.02, Filename: LMT_sentiment_analysis_N849_min-0.10_max0.82_mean0.02.png
+9. Ticker: AGN, N: 837, Min: -0.09, Max: 0.69, Mean: 0.02, Filename: AGN_sentiment_analysis_N837_min-0.09_max0.69_mean0.02.png
+10. Ticker: GILD, N: 832, Min: -0.12, Max: 0.55, Mean: 0.02, Filename: GILD_sentiment_analysis_N832_min-0.12_max0.55_mean0.02.png
+11. Ticker: MU, N: 806, Min: -0.1, Max: 0.82, Mean: 0.02, Filename: MU_sentiment_analysis_N806_min-0.10_max0.82_mean0.02.png
+12. Ticker: AZN, N: 791, Min: -0.13, Max: 0.81, Mean: 0.03, Filename: AZN_sentiment_analysis_N791_min-0.13_max0.81_mean0.03.png
+13. Ticker: GLD, N: 788, Min: -0.08, Max: 0.81, Mean: 0.05, Filename: GLD_sentiment_analysis_N788_min-0.08_max0.81_mean0.05.png
+14. Ticker: ATVI, N: 770, Min: -0.1, Max: 0.81, Mean: 0.02, Filename: ATVI_sentiment_analysis_N770_min-0.10_max0.81_mean0.02.png
+15. Ticker: CAT, N: 763, Min: -0.09, Max: 0.81, Mean: 0.04, Filename: CAT_sentiment_analysis_N763_min-0.09_max0.81_mean0.04.png
+16. Ticker: FDX, N: 742, Min: -0.09, Max: 0.82, Mean: 0.04, Filename: FDX_sentiment_analysis_N742_min-0.09_max0.82_mean0.04.png
+17. Ticker: LLY, N: 740, Min: -0.1, Max: 0.74, Mean: 0.03, Filename: LLY_sentiment_analysis_N740_min-0.10_max0.74_mean0.03.png
+18. Ticker: KO, N: 735, Min: -0.09, Max: 0.82, Mean: 0.03, Filename: KO_sentiment_analysis_N735_min-0.09_max0.82_mean0.03.png
+19. Ticker: DISH, N: 733, Min: -0.14, Max: 0.82, Mean: 0.01, Filename: DISH_sentiment_analysis_N733_min-0.14_max0.82_mean0.01.png
+20. Ticker: MS, N: 729, Min: -0.1, Max: 0.82, Mean: 0.04, Filename: MS_sentiment_analysis_N729_min-0.10_max0.82_mean0.04.png
+21. Ticker: NVDA, N: 718, Min: -0.11, Max: 0.8, Mean: 0.01, Filename: NVDA_sentiment_analysis_N718_min-0.11_max0.80_mean0.01.png
+22. Ticker: CMCSA, N: 712, Min: -0.1, Max: 0.34, Mean: 0.02, Filename: CMCSA_sentiment_analysis_N712_min-0.10_max0.34_mean0.02.png
+23. Ticker: BIDU, N: 710, Min: -0.09, Max: 0.82, Mean: 0.03, Filename: BIDU_sentiment_analysis_N710_min-0.09_max0.82_mean0.03.png
+24. Ticker: AXP, N: 702, Min: -0.1, Max: 0.81, Mean: 0.03, Filename: AXP_sentiment_analysis_N702_min-0.10_max0.81_mean0.03.png
+25. Ticker: QCOM, N: 700, Min: -0.12, Max: 0.3, Mean: -0.0, Filename: QCOM_sentiment_analysis_N700_min-0.12_max0.30_mean-0.00.png
+26. Ticker: VZ, N: 691, Min: -0.11, Max: 0.4, Mean: 0.02, Filename: VZ_sentiment_analysis_N691_min-0.11_max0.40_mean0.02.png
+27. Ticker: HD, N: 679, Min: -0.1, Max: 0.82, Mean: 0.03, Filename: HD_sentiment_analysis_N679_min-0.10_max0.82_mean0.03.png
+28. Ticker: MYL, N: 667, Min: -0.11, Max: 0.43, Mean: -0.0, Filename: MYL_sentiment_analysis_N667_min-0.11_max0.43_mean-0.00.png
+29. Ticker: MDT, N: 663, Min: -0.07, Max: 0.82, Mean: 0.03, Filename: MDT_sentiment_analysis_N663_min-0.07_max0.82_mean0.03.png
+30. Ticker: BX, N: 659, Min: -0.11, Max: 0.82, Mean: 0.03, Filename: BX_sentiment_analysis_N659_min-0.11_max0.82_mean0.03.png
+31. Ticker: FSLR, N: 659, Min: -0.1, Max: 0.82, Mean: 0.01, Filename: FSLR_sentiment_analysis_N659_min-0.10_max0.82_mean0.01.png
+32. Ticker: BIIB, N: 659, Min: -0.11, Max: 0.8, Mean: 0.03, Filename: BIIB_sentiment_analysis_N659_min-0.11_max0.80_mean0.03.png
+33. Ticker: P, N: 659, Min: -0.1, Max: 0.28, Mean: 0.02, Filename: P_sentiment_analysis_N659_min-0.10_max0.28_mean0.02.png
+34. Ticker: NOK, N: 658, Min: -0.08, Max: 0.81, Mean: 0.03, Filename: NOK_sentiment_analysis_N658_min-0.08_max0.81_mean0.03.png
+35. Ticker: AIG, N: 656, Min: -0.1, Max: 0.81, Mean: 0.02, Filename: AIG_sentiment_analysis_N656_min-0.10_max0.81_mean0.02.png
+36. Ticker: BAC, N: 655, Min: -0.1, Max: 0.42, Mean: 0.03, Filename: BAC_sentiment_analysis_N655_min-0.10_max0.42_mean0.03.png
+37. Ticker: ORCL, N: 652, Min: -0.1, Max: 0.78, Mean: 0.01, Filename: ORCL_sentiment_analysis_N652_min-0.10_max0.78_mean0.01.png
+38. Ticker: DB, N: 645, Min: -0.1, Max: 0.82, Mean: 0.03, Filename: DB_sentiment_analysis_N645_min-0.10_max0.82_mean0.03.png
+39. Ticker: CHK, N: 642, Min: -0.13, Max: 0.82, Mean: 0.03, Filename: CHK_sentiment_analysis_N642_min-0.13_max0.82_mean0.03.png
+40. Ticker: GSK, N: 639, Min: -0.08, Max: 0.81, Mean: 0.03, Filename: GSK_sentiment_analysis_N639_min-0.08_max0.81_mean0.03.png
+41. Ticker: AET, N: 636, Min: -0.08, Max: 0.81, Mean: 0.02, Filename: AET_sentiment_analysis_N636_min-0.08_max0.81_mean0.02.png
+42. Ticker: MA, N: 623, Min: -0.1, Max: 0.8, Mean: 0.04, Filename: MA_sentiment_analysis_N623_min-0.10_max0.80_mean0.04.png
+43. Ticker: CVS, N: 617, Min: -0.09, Max: 0.81, Mean: 0.02, Filename: CVS_sentiment_analysis_N617_min-0.09_max0.81_mean0.02.png
+44. Ticker: ADBE, N: 617, Min: -0.09, Max: 0.81, Mean: 0.04, Filename: ADBE_sentiment_analysis_N617_min-0.09_max0.81_mean0.04.png
+45. Ticker: BNO, N: 615, Min: -0.08, Max: 0.48, Mean: 0.06, Filename: BNO_sentiment_analysis_N615_min-0.08_max0.48_mean0.06.png
+46. Ticker: CMG, N: 614, Min: -0.08, Max: 0.81, Mean: 0.02, Filename: CMG_sentiment_analysis_N614_min-0.08_max0.81_mean0.02.png
+47. Ticker: FCX, N: 612, Min: -0.1, Max: 0.82, Mean: 0.05, Filename: FCX_sentiment_analysis_N612_min-0.10_max0.82_mean0.05.png
+48. Ticker: EWU, N: 608, Min: -0.09, Max: 0.82, Mean: 0.1, Filename: EWU_sentiment_analysis_N608_min-0.09_max0.82_mean0.10.png
+49. Ticker: COP, N: 605, Min: -0.09, Max: 0.82, Mean: 0.04, Filename: COP_sentiment_analysis_N605_min-0.09_max0.82_mean0.04.png
+50. Ticker: TWX, N: 599, Min: -0.09, Max: 0.81, Mean: 0.03, Filename: TWX_sentiment_analysis_N599_min-0.09_max0.81_mean0.03.png
+
+
+
 ## Part 2: Predictive Modeling with Sentiment Features
 Using the fine-tuned sentiment scores, I constructed daily features: sentiment score + lagged OHLCV market features (open, high, low, close, volume) over a look-back window (e.g., 60 days), aligned with the paper's approach. Features were normalized using MinMax scaling to [0,1] for stable training across varying scales. Unlike the paper's focus on predicting next-day closing prices, the target here is the next day's return (\(\text{return}_{t+1}\)), normalized similarly to handle scale differences across tickers and emphasize relative changes. Only data points with available sentiment were used, ensuring alignment between news and market data.
 I trained regressors on chronological splits (90% train, 10% test), comparing:

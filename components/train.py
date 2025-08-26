@@ -13,13 +13,13 @@ from utils.logger import Logger
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=256, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=256, hidden_size=256, batch_first=True)
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=100, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=100, hidden_size=100, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 64)
+        self.fc1 = nn.Linear(100, 100)
+        self.fc2 = nn.Linear(100, 25)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(64, 1)
+        self.fc_out = nn.Linear(25, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
@@ -36,12 +36,12 @@ class LSTMRegressor(nn.Module):
 class RNNRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.rnn1 = nn.RNN(input_size=input_size, hidden_size=512, batch_first=True)
-        self.rnn2 = nn.RNN(input_size=512, hidden_size=512, batch_first=True)
+        self.rnn1 = nn.RNN(input_size=input_size, hidden_size=256, batch_first=True)
+        self.rnn2 = nn.RNN(input_size=256, hidden_size=256, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(512, 25)
+        self.fc1 = nn.Linear(256, 32)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(25, 1)
+        self.fc_out = nn.Linear(32, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
@@ -95,11 +95,11 @@ class TabMLPRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
         self.fc1 = nn.Linear(input_size, 256)
-        self.fc2 = nn.Linear(256, 256)
+        self.fc2 = nn.Linear(256, 128)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc3 = nn.Linear(256, 25)
+        self.fc3 = nn.Linear(128, 32)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(25, 1)
+        self.fc_out = nn.Linear(32, 1)
     def forward(self, x):
         # x: (B, flat_dim)
         x = x.view(x.size(0), -1)
@@ -136,12 +136,11 @@ def train_model(
     original_y_train: np.ndarray,
     original_y_val: np.ndarray,
     model_type: str,
-    epochs: int = 100,
-    patience: int = 20,
-    lookback: int = 60,
-    lr: float = 1e-3,
-    weight_decay: float = 0.01,
-    dropout_rate: float = 0.2,
+    weight_decay: float,
+    dropout_rate: float,
+    epochs: int,
+    patience: int,
+    lr: float,
     save_dir: Optional[Path] = None,
     ticker: Optional[str] = None,
     load_path: Optional[Path] = None,

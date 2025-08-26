@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "BMY",
+        "best_epoch": 211,
+        "best_train_mse": 0.00019831519433324073,
+        "best_val_mse": 0.0003140371613171956,
+        "best_train_mae": 0.0099577255271442,
+        "best_val_mae": 0.013162035056654448,
+        "best_train_rmse": 0.014082442768683305,
+        "best_val_rmse": 0.017721093682873966,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250826-071213/saved_weights/BMY/BMY_best-epoch211.pt",
+        "test_MSE": 0.00018452901745781344,
+        "test_MAE": 0.010747760056468306,
+        "test_RMSE": 0.013584145812593939,
+        "best_train_mse_scaled": 0.006597530243084792,
+        "best_val_mse_scaled": 0.010447357305897319,
+        "test_MSE_scaled": 0.006138892844319344,
+        "test_MAE_scaled": 0.061991285532712936,
+        "test_RMSE_scaled": 0.07835108706533268,
+        "epochs_run": 251,
+        "final_train_mse": 0.0001971915274003715,
+        "final_val_mse": 0.00031414706715316776,
+        "final_train_mse_scaled": 0.006560148200243872,
+        "final_val_mse_scaled": 0.010451013740863806
+    }
+]

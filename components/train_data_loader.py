@@ -78,7 +78,7 @@ class TrainDataPreprocessor:
         for c in [schema.price_open, schema.price_high, schema.price_low, schema.price_volume]:
             if c: keep.append(c)
         prices = prices[keep].dropna(subset=["ticker", "trading_date"])
-        colmap = {schema.price_close: "Adj Close"}
+        colmap = {schema.price_close: "Close"}
         if schema.price_open: colmap[schema.price_open] = "Open"
         if schema.price_high: colmap[schema.price_high] = "High"
         if schema.price_low: colmap[schema.price_low] = "Low"
@@ -97,11 +97,11 @@ class TrainDataPreprocessor:
     @staticmethod
     def build_supervised_for_ticker(df_all: pd.DataFrame, ticker: str, predict_returns: bool) -> Tuple[pd.DataFrame, List[str]]:
         df = df_all[df_all["ticker"] == ticker].copy().sort_values("trading_date").reset_index(drop=True)
-        feat_cols = ["Open", "High", "Low", "Volume", "Adj Close"]
+        feat_cols = ["Open", "High", "Low", "Volume", "Close"]
         if predict_returns:
-            df['raw_target'] = (df['Adj Close'].shift(-1) - df['Adj Close']) / df['Adj Close']
+            df['raw_target'] = (df['Close'].shift(-1) - df['Close']) / df['Close']
         else:
-            df['raw_target'] = df['Adj Close'].shift(-1)
+            df['raw_target'] = df['Close'].shift(-1)
         df = df.dropna(subset=['raw_target'])
         return df, feat_cols
     @staticmethod

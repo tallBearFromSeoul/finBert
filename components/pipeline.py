@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from yfinance import Ticker
 import argparse
 import json
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ class Pipeline:
             price_open="open",
             price_high="high",
             price_low="low",
-            price_close="adj close",
+            price_close="close",
             price_volume="volume",
         )
         # Determine tickers to run
@@ -105,7 +106,14 @@ class Pipeline:
             if not price_path.exists():
                 Logger.warning(f"Skipping {ticker}: price file not found ({price_path})")
                 continue
-            prices_df = pd.read_csv(price_path, parse_dates=["date"], date_format="%Y-%m-%d")
+            ticker_data = Ticker(ticker)
+            prices_df = ticker_data.history(start='2005-10-14', end='2023-12-29')
+            prices_df.reset_index(inplace=True)
+            prices_df.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high',
+                                      'Low': 'low', 'Close': 'close', 'Volume': 'volume', 'Close': 'close'}, inplace=True)
+
+            Logger.info(f"{prices_df.head(5)=} {prices_df.columns=}")
+            #prices_df = pd.read_csv(price_path, parse_dates=["date"], date_format="%Y-%m-%d")
             prices_df["date"] = ensure_utc(prices_df["date"])
             prices_df = prices_df[(prices_df["date"] > start_date_) & (prices_df["date"] < end_date_)].dropna(subset=["date"])
             Logger.info(f"Loaded prices for {ticker} with columns={list(prices_df.columns)} shape={prices_df.shape}.")
@@ -144,8 +152,7 @@ class Pipeline:
                 original_y_val=original_y_val,
                 model_type=model_type,
                 epochs=args_.epochs, patience=args_.patience,
-                lookback=args_.lookback,
-                lr=1e-4, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
+                lr=args_.lr, weight_decay=args_.weight_decay, dropout_rate=args_.dropout_rate,
                 save_dir=ticker_save_dir,
                 ticker=ticker,
                 load_path=resolved_load_path,
@@ -395,7 +402,7 @@ class Pipeline:
         ap.add_argument(
             "--epochs", type=int, default=1000)
         ap.add_argument(
-            "--patience", type=int, default=40)
+            "--patience", type=int, default=60)
         ap.add_argument(
             "--use-bodies", action="store_true",
             help="Include article bodies in sentiment analysis if available")
@@ -404,7 +411,10 @@ class Pipeline:
             "--load-dir", default=None,
             help="Path to a weights file (.pt/.pth) or a directory containing saved weights to initialize training from.")
         ap.add_argument(
-            "--dropout-rate", type=float, default=0.0, help="Dropout rate for LSTM layers")
+            "--lr", type=float, default=1e-5, help="Learning rate for Adam optimizer"
+        )
+        ap.add_argument(
+            "--dropout-rate", type=float, default=0.00, help="Dropout rate for LSTM layers")
         ap.add_argument(
             "--weight-decay", type=float, default=0.00, help="Weight decay for Adam optimizer")
         ap.add_argument(

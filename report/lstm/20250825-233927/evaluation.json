@@ -1,0 +1,26 @@
+[
+    {
+        "ticker": "EWI",
+        "best_epoch": 26,
+        "best_train_mse": 0.00040792119125892244,
+        "best_val_mse": 0.0004643179834264106,
+        "best_train_mae": 0.014661546143932214,
+        "best_val_mae": 0.014996866356530806,
+        "best_train_rmse": 0.020197058975477654,
+        "best_val_rmse": 0.021548038969391406,
+        "saved_weights_path": "/home/tbfs/Projects/finBert/output/20250825-233927/saved_weights/EWI/EWI_best-epoch026.pt",
+        "test_MSE": 0.0002899772511289828,
+        "test_MAE": 0.012342793922131749,
+        "test_RMSE": 0.01702871842297543,
+        "best_train_mse_scaled": 0.012784276190519799,
+        "best_val_mse_scaled": 0.014551753888143209,
+        "test_MSE_scaled": 0.00908790621906519,
+        "test_MAE_scaled": 0.06909767538309097,
+        "test_RMSE_scaled": 0.09533051043115834,
+        "epochs_run": 66,
+        "final_train_mse": 0.0004052560115713635,
+        "final_val_mse": 0.00046452523175029444,
+        "final_train_mse_scaled": 0.01270074934861226,
+        "final_val_mse_scaled": 0.014558249057309252
+    }
+]

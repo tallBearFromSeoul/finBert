@@ -25,7 +25,7 @@ def visualize_csv(csv_path: Path, save_dir: Path, prices_dir: Path, yf_download_
                     continue
                 hist.reset_index(inplace=True)
                 hist.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high',
-                                     'Low': 'low', 'Close': 'close', 'Volume': 'volume', 'Adj Close': 'adj close'}, inplace=True)
+                                     'Low': 'low', 'Close': 'close', 'Volume': 'volume', 'Close': 'close'}, inplace=True)
                 if hist['date'].dtype.tz is not None:
                     hist['date'] = hist['date'].dt.tz_convert(None)
                     print(f"Converted timezone-aware dates to naive for {ticker}.")
@@ -35,10 +35,10 @@ def visualize_csv(csv_path: Path, save_dir: Path, prices_dir: Path, yf_download_
         prices['trading_date'] = prices['date']
         # Merge with sentiment group
         group = pd.merge(group, prices[['trading_date', #'open', 'high', 'low', 'close', 'volume'
-                                        'adj close']],
+                                        'close']],
                          on='trading_date', how='left')
         # Compute daily returns
-        group['returns'] = (group['adj close'] - group['adj close'].shift(1)) / group['adj close'].shift(1)
+        group['returns'] = (group['close'] - group['close'].shift(1)) / group['close'].shift(1)
         # Create a single figure with GridSpec for subplots
         fig = plt.figure(figsize=(22, 18))
         gs = gridspec.GridSpec(4, 1, figure=fig, height_ratios=[2, 2, 2, 1])
