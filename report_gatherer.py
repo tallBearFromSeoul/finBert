@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from utils.logger import Logger
+from utils.pathlib_utils import ensure_dir
 
 def parse_output_dir(stdout):
     lines = stdout.splitlines()
@@ -21,45 +22,55 @@ def parse_output_dir(stdout):
     raise ValueError("Could not find logger output path in stdout")
 
 def generate_reports():
-    tickers = ["BMY"]#, "EBAY", "EWI"]#"BABA", "DAL", "JNJ"]
+    all_tickers = True
+    tickers = ["BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
     models = ["rnn", "finbert-rnn", "lstm", "finbert-lstm", "tabmlp", "finbert-tabmlp"]
     model_map = {'rnn': 'RNN', 'lstm': 'LSTM', 'tabmlp': 'TabMLP'}
-    data_sources = {}
-    for ticker in tickers:
-        data_sources[ticker] = {"RNN": {}, "LSTM": {}, "TabMLP": {}}
+    data_sources = {"RNN": {}, "LSTM": {}, "TabMLP": {}}
     sentiment_csv_path = "output/20250823-140342/sentiment_daily.csv"
-    for ticker in tickers:
-        for model in models:
-            base_model = model.replace("finbert-", "") if "finbert-" in model else model
-            variant = "Sentiment" if "finbert-" in model else "Vanilla"
+    for model in models:
+        base_model = model.replace("finbert-", "") if "finbert-" in model else model
+        variant = "Sentiment" if "finbert-" in model else "Vanilla"
+        if all_tickers:
             cmd = [
                 "python3", "-m", "components.pipeline",
-                "--ticker", ticker,
-                "--scale-method", "minmax", #"standard",
+                "--ticker", "all-tickers",
+                "--scale-method", "minmax",
                 "--data-source", "kaggle",
                 "--model", model,
                 "--sentiment-csv-path", sentiment_csv_path,
-                #"--predict-returns"
+                #--predict-returns
             ]
-            Logger.info(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                Logger.info(f"Error running command for {ticker} {model}: {result.stderr}")
-                continue
-            output_dir = parse_output_dir(result.stdout)
-            timestamp = os.path.basename(output_dir)
-            report_dir = f'report/{base_model}/{timestamp}/'
-            os.makedirs(f'report/{base_model}', exist_ok=True)
-            shutil.copytree(output_dir, report_dir, dirs_exist_ok=True)
-            Logger.info(f"Copied output to {report_dir}")
-            upper_model = model_map[base_model]
-            data_sources[ticker][upper_model][variant] = report_dir
+        else:
+            cmd = [
+                "python3", "-m", "components.pipeline",
+                "--ticker"
+            ] + [str(ticker) for ticker in tickers] + [  # Pass tickers as separate arguments
+                "--scale-method", "minmax",
+                "--data-source", "kaggle",
+                "--model", model,
+                "--sentiment-csv-path", sentiment_csv_path,
+                #--predict-returns
+            ]
+        Logger.info(f"Running command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            Logger.info(f"Error running command for {cmd} {model}: {result.stderr}")
+            continue
+        output_dir = parse_output_dir(result.stdout)
+        timestamp = os.path.basename(output_dir)
+        report_dir = f'report/{base_model}/{timestamp}/'
+        os.makedirs(f'report/{base_model}', exist_ok=True)
+        shutil.copytree(output_dir, report_dir, dirs_exist_ok=True)
+        Logger.info(f"Copied output to {report_dir}")
+        upper_model = model_map[base_model]
+        data_sources[upper_model][variant] = report_dir
     # Save the json for reference, though we use in memory
-    with open('report_paths.json', 'w') as f:
+    with open('report/report_paths.json', 'w') as f:
         json.dump(data_sources, f, indent=4)
     return data_sources
 
-def plot_comparisons(stock_data, stock, output_file=None):
+def plot_comparisons(stock_data, stocks, output_file=None):
     """
     Generate a beautiful plot comparing metrics (MSE, MAE, RMSE) for Vanilla vs Sentiment across models for a given stock, including train, val, and test.
     """
@@ -68,7 +79,7 @@ def plot_comparisons(stock_data, stock, output_file=None):
     models = ['RNN', 'LSTM', 'TabMLP']
     variants = ['Vanilla', 'Sentiment']
     fig, axs = plt.subplots(len(splits), len(metrics), figsize=(15, 12), sharey=False)
-    fig.suptitle(f'Comparison of Metrics for {stock}', fontsize=16)
+    fig.suptitle(f'Comparison of Metrics for \n{stocks}', fontsize=12)
     bar_width = 0.35
     x = np.arange(len(models))
     colors = {'Vanilla': 'skyblue', 'Sentiment': 'lightgreen'}
@@ -105,6 +116,7 @@ def plot_comparisons(stock_data, stock, output_file=None):
         plt.show()
 
 if __name__ == "__main__":
+    ensure_dir("report")
     data_sources = generate_reports()
     Logger.info("Data sources for reports: {data_sources}")
     stocks = list(data_sources.keys())
@@ -112,32 +124,25 @@ if __name__ == "__main__":
     variants = ['Vanilla', 'Sentiment']
     # Collect data
     all_data = {}
-    for stock in stocks:
-        all_data[stock] = {}
-        Logger.info(f"#### {stock}:")
-        for model in models:
-            all_data[stock][model] = {}
-            for variant in variants:
-                dir_path = data_sources[stock][model][variant]
-                json_path = dir_path + 'evaluation.json'
-                with open(json_path, 'r') as f:
-                    data = json.load(f)
-                    # Assuming the JSON is a list with one dict
-                    d = data[0]
-                    # Verify ticker
-                    if d['ticker'] != stock:
-                        Logger.info(f"Warning: Ticker mismatch in {json_path}: expected {stock}, got {d['ticker']}")
-                all_data[stock][model][variant] = {
-                    'Train MSE': d['best_train_mse_scaled'],
-                    'Val MSE': d['best_val_mse_scaled'],
-                    'Test MSE': d['test_MSE_scaled'],
-                }
-                # Format for Logger.infoing
-                train_mse_fmt = '{:.4e}'.format(d['best_train_mse_scaled'])
-                val_mse_fmt = '{:.4e}'.format(d['best_val_mse_scaled'])
-                test_mse_fmt = '{:.4e}'.format(d['test_MSE_scaled'])
-                Logger.info(f"| {model} | {variant} | {train_mse_fmt} | {val_mse_fmt} | {test_mse_fmt} |")
-        Logger.info("\n") # Separator between stocks
+    for model in models:
+        all_data[model] = {}
+        for variant in variants:
+            dir_path = data_sources[model][variant]
+            json_path = dir_path + 'evaluation.json'
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+                # Assuming the JSON is a list with one dict
+                d = data[0]
+            all_data[model][variant] = {
+                'Train MSE': d['best_train_mse_scaled'],
+                'Val MSE': d['best_val_mse_scaled'],
+                'Test MSE': d['test_MSE_scaled'],
+            }
+            # Format for Logger.infoing
+            train_mse_fmt = '{:.4e}'.format(d['best_train_mse_scaled'])
+            val_mse_fmt = '{:.4e}'.format(d['best_val_mse_scaled'])
+            test_mse_fmt = '{:.4e}'.format(d['test_MSE_scaled'])
+            Logger.info(f"| {model} | {variant} | {train_mse_fmt} | {val_mse_fmt} | {test_mse_fmt} |")
+    Logger.info("\n") # Separator between stocks
     # Generate plots for each stock
-    for stock in stocks:
-        plot_comparisons(all_data[stock], stock, output_file=f'report/{stock}_metrics_comparison.png')
+    plot_comparisons(all_data, stocks, output_file=f'report/metrics_comparison.png')

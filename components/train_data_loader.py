@@ -115,12 +115,15 @@ class TrainDataPreprocessor:
         n = len(train_df)
         cut = int(math.floor(n * (1 - val_ratio_within_train)))
         return train_df.iloc[:cut].copy(), train_df.iloc[cut:].copy()
+
+
     @staticmethod
-    def make_dataloaders_for_ticker(df: pd.DataFrame, sentiment_col: str, use_sentiment_in_features: bool, feat_cols: List[str],
-                                    lookback: int, batch_size: int, scale_method: str):
+    def make_dataloaders_for_ticker(
+        df: pd.DataFrame, sentiment_col: str, use_sentiment_in_features: bool, feat_cols: List[str],
+        lookback: int, batch_size: int, scale_method: str, sentiment_threshold: float):
         scaler_cls = MinMaxScaler if scale_method == "minmax" else StandardScaler
         n = len(df)
-        has_sent = df[sentiment_col].notna()
+        has_sent = df[sentiment_col].notna() & (df[sentiment_col].abs() > sentiment_threshold)
         valid_indices = [i for i in range(n) if has_sent[i] and i >= lookback - 1]
         num_valid = len(valid_indices)
         if num_valid == 0:
@@ -153,8 +156,8 @@ class TrainDataPreprocessor:
         ds_train = SequenceDataset(df, lookback, valid_train, sentiment_col, use_sentiment_in_features, feat_cols, 'y')
         ds_val = SequenceDataset(df, lookback, valid_val, sentiment_col, use_sentiment_in_features, feat_cols, 'y')
         ds_test = SequenceDataset(df, lookback, valid_test, sentiment_col, use_sentiment_in_features, feat_cols, 'y')
-        dl_train = DataLoader(ds_train, batch_size=batch_size, shuffle=False)
-        dl_val = DataLoader(ds_val, batch_size=batch_size, shuffle=False)
+        dl_train = DataLoader(ds_train, batch_size=batch_size, shuffle=True)
+        dl_val = DataLoader(ds_val, batch_size=batch_size, shuffle=True)
         dl_test = DataLoader(ds_test, batch_size=1, shuffle=False)
         original_y_train = df['raw_target'].iloc[valid_train].values if valid_train else np.array([])
         original_y_val = df['raw_target'].iloc[valid_val].values if valid_val else np.array([])
@@ -271,7 +274,6 @@ class TrainDataLoader(Iterator):
             )
             # Create DataLoaders
             (dl_train, dl_val, dl_test, y_scaler, is_hybrid,
-             arima_pred_train_slice, arima_pred_val_slice, arima_pred_test_slice,
              original_y_train, original_y_val, original_y_test) = \
                 TrainDataPreprocessor.make_dataloaders_for_ticker(
                     df_supervised,
@@ -289,9 +291,6 @@ class TrainDataLoader(Iterator):
                 "test": dl_test,
                 "y_scaler": y_scaler,
                 "is_hybrid": is_hybrid,
-                "arima_pred_train": arima_pred_train_slice,
-                "arima_pred_val": arima_pred_val_slice,
-                "arima_pred_test": arima_pred_test_slice,
                 "original_y_train": original_y_train,
                 "original_y_val": original_y_val,
                 "original_y_test": original_y_test,
