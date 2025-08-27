@@ -55,6 +55,29 @@ class RNNRegressor(nn.Module):
         y = self.fc_out(z).squeeze(-1)
         return y
 
+class GRURegressor(nn.Module):
+    def __init__(self, input_size: int, dropout_rate: float = 0.0):
+        super().__init__()
+        self.gru1 = nn.GRU(input_size=input_size, hidden_size=100, batch_first=True)
+        self.gru2 = nn.GRU(input_size=100, hidden_size=100, batch_first=True)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc1 = nn.Linear(100, 100)
+        self.fc2 = nn.Linear(100, 25)
+        self.relu = nn.ReLU()
+        self.fc_out = nn.Linear(25, 1)
+    def forward(self, x):
+        if x.dim() == 2:
+            x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
+        # x: (B, T, F)
+        out1, _ = self.gru1(x) # (B, T, 512)
+        out1 = self.dropout(out1)
+        out2, _ = self.gru2(out1) # (B, T, 512)
+        out2 = self.dropout(out2)
+        last = out2[:, -1, :] # (B, 512)
+        z = self.relu(self.fc2(self.relu(self.fc1(last))))
+        y = self.fc_out(z).squeeze(-1)
+        return y
+
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super().__init__()
@@ -133,8 +156,8 @@ def train_model(
     dl_train,
     dl_val,
     input_size: int,
-    original_y_train: np.ndarray,
-    original_y_val: np.ndarray,
+    original_y_train: np.ndarray,  # Kept for compatibility/verification, but not used for metrics
+    original_y_val: np.ndarray,  # Kept for compatibility/verification, but not used for metrics
     model_type: str,
     weight_decay: float,
     dropout_rate: float,
@@ -159,6 +182,8 @@ def train_model(
         model = LSTMRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
     elif model_type == "rnn":
         model = RNNRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
+    elif model_type == "gru":
+        model = GRURegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
     elif model_type == "transformer":
         model = TransformerRegressor(input_size=input_size, dropout_rate=dropout_rate).to(device)
     elif model_type == "tabmlp":
@@ -199,6 +224,7 @@ def train_model(
         model.train()
         tr_losses = []
         tr_pred_s_batches = []
+        tr_true_s_batches = []  # ADDED
         for step, (xb, yb) in enumerate(dl_train, start=1):
             xb = xb.to(device) # (B, T, F)
             yb = yb.to(device) # (B,)
@@ -211,26 +237,30 @@ def train_model(
             tr_losses.append(l)
             # accumulate for price-scale metrics
             tr_pred_s_batches.append(pred.detach().cpu().numpy().ravel())
+            tr_true_s_batches.append(yb.cpu().numpy().ravel())
             if log_per_batch_debug and step % 50 == 0:
                 Logger.debug(f"[train] epoch {ep} step {step} loss_scaled={l:.6f}")
         # scaled metrics (epoch-level)
         tr_stats = _loss_stats(tr_losses)
-        tr_mse_scaled = tr_stats["mean"]
-        # price-scale metrics (epoch-level)
         if tr_pred_s_batches:
             y_pred_s = np.concatenate(tr_pred_s_batches)
-            y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_pred_price = y_pred_inter
-            y_true_price = original_y_train
+            y_true_s = np.concatenate(tr_true_s_batches)
+            tr_mse_scaled = mse(y_true_s, y_pred_s)
+            tr_mae_scaled = mae(y_true_s, y_pred_s)
+            tr_rmse_scaled = rmse(y_true_s, y_pred_s)
+            y_pred_price = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
+            y_true_price = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
             tr_mse_price = mse(y_true_price, y_pred_price)
             tr_mae_price = mae(y_true_price, y_pred_price)
             tr_rmse_price = rmse(y_true_price, y_pred_price)
         else:
+            tr_mse_scaled = tr_mae_scaled = tr_rmse_scaled = float("nan")
             tr_mse_price = tr_mae_price = tr_rmse_price = float("nan")
         # ---- Val ----
         model.eval()
         val_losses = []
         val_pred_s_batches = []
+        val_true_s_batches = []
         with torch.no_grad():
             for step, (xb, yb) in enumerate(dl_val, start=1):
                 xb = xb.to(device)
@@ -240,19 +270,23 @@ def train_model(
                 l = float(loss.item())
                 val_losses.append(l)
                 val_pred_s_batches.append(pred.detach().cpu().numpy().ravel())
+                val_true_s_batches.append(yb.cpu().numpy().ravel())
                 if log_per_batch_debug and step % 50 == 0:
                     Logger.debug(f"[val] epoch {ep} step {step} loss_scaled={l:.6f}")
         val_stats = _loss_stats(val_losses)
-        val_mse_scaled = val_stats["mean"]
         if val_pred_s_batches:
             y_pred_s = np.concatenate(val_pred_s_batches)
-            y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
-            y_pred_price = y_pred_inter
-            y_true_price = original_y_val
+            y_true_s = np.concatenate(val_true_s_batches)
+            val_mse_scaled = mse(y_true_s, y_pred_s)
+            val_mae_scaled = mae(y_true_s, y_pred_s)
+            val_rmse_scaled = rmse(y_true_s, y_pred_s)
+            y_pred_price = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
+            y_true_price = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
             val_mse_price = mse(y_true_price, y_pred_price)
             val_mae_price = mae(y_true_price, y_pred_price)
             val_rmse_price = rmse(y_true_price, y_pred_price)
         else:
+            val_mse_scaled = val_mae_scaled = val_rmse_scaled = float("nan")
             val_mse_price = val_mae_price = val_rmse_price = float("nan")
         # histories
         train_hist_scaled.append(tr_mse_scaled)
@@ -339,7 +373,7 @@ def train_model(
     return model, train_hist_scaled, val_hist_scaled, out_info, price_hist
 
 # ----------------------------- Evaluation ----------------------------------- #
-def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, original_y_test: np.ndarray):
+def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, original_y_test: np.ndarray):  # original_y_test kept for compatibility, but not used
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     preds_scaled, trues_scaled = [], []
@@ -370,7 +404,7 @@ def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, orig
     y_pred_inter = y_scaler.inverse_transform(y_pred_s.reshape(-1, 1)).ravel()
     # Final to original target scale
     y_pred = y_pred_inter
-    y_true = original_y_test
+    y_true = y_scaler.inverse_transform(y_true_s.reshape(-1, 1)).ravel()
     return {
         "test_MSE": mse(y_true, y_pred),
         "test_MAE": mae(y_true, y_pred),

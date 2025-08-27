@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from yfinance import Ticker
 import argparse
+import concurrent.futures
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,6 +34,7 @@ class Pipeline:
             Logger.info(f"Set deterministic seeds to {args.seed}")
         # Expand/normalize user paths
         prices_dir = Path(os.path.expanduser(args.prices_dir)).resolve()
+        tickers_path = Path(os.path.expanduser(args.tickers_path)).resolve()
         fnspid_csv_path = Path(os.path.expanduser(args.fnspid_csv_path)).resolve()
         kaggle_csv_path = Path(os.path.expanduser(args.kaggle_csv_path)).resolve()
         sentiment_csv_path_in = Path(os.path.expanduser(args.sentiment_csv_path_in)).resolve() \
@@ -76,9 +78,9 @@ class Pipeline:
         assert isinstance(args.ticker, list), "Sanity check on args.ticker type"
         # Determine tickers to run
         if args.ticker[0].lower() == "all-tickers":
-            tickers = Pipeline._list_all_tickers(prices_dir)
+            tickers = Pipeline._list_all_tickers(Path(tickers_path))
             if not tickers:
-                raise ValueError(f"No price CSVs found under {prices_dir}")
+                raise ValueError(f"No price CSVs found under {tickers_path}")
             Logger.info(f"Running all tickers: {len(tickers)} found.")
         else:
             tickers = args.ticker
@@ -99,35 +101,50 @@ class Pipeline:
         df_joined_list = []
         ticker_lengths = []
         ticker_joined_lengths = []
-        for ticker in tickers_:
-            Logger.info(f"Training predictor for ticker: {ticker}")
-            price_path = prices_dir_ / f"{ticker}.csv"
-            if not price_path.exists():
-                Logger.warning(f"Skipping {ticker}: price file not found ({price_path})")
-                continue
-            ticker_data = Ticker(ticker)
-            prices_df = ticker_data.history(start='2005-10-14', end='2023-12-29')
-            prices_df.reset_index(inplace=True)
-            prices_df.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high',
-                                      'Low': 'low', 'Close': 'close', 'Volume': 'volume'}, inplace=True)
-            Logger.info(f"{prices_df.head(5)=} {prices_df.columns=}")
-            #prices_df = pd.read_csv(price_path, parse_dates=["date"], date_format="%Y-%m-%d")
-            prices_df["date"] = ensure_utc(prices_df["date"])
-            prices_df = prices_df[(prices_df["date"] > start_date_) & (prices_df["date"] < end_date_)].dropna(subset=["date"])
+        Logger.info(f"Training predictor for ticker: {tickers_}")
+        def process_ticker(ticker):
+            prices_path = prices_dir_ / f"{ticker}.csv"
+            if not prices_path.exists():
+                Logger.info(f"Skipping {ticker}: price file not found ({prices_path}), downloading...")
+                ticker_data = Ticker(ticker)
+                prices_df = ticker_data.history(start='2005-10-14', end='2023-12-29')
+                prices_df.reset_index(inplace=True)
+                prices_df.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high',
+                                          'Low': 'low', 'Close': 'close', 'Volume': 'volume'}, inplace=True)
+                prices_df["date"] = ensure_utc(prices_df["date"])
+                prices_df = prices_df[(prices_df["date"] > start_date_) & (prices_df["date"] < end_date_)].dropna(subset=["date"])
+                prices_df.to_csv(str(prices_path), index=False)
+            else:
+                prices_df = pd.read_csv(prices_path, parse_dates=["date"], date_format="%Y-%m-%d")
+
+            condition = ' & '.join([f"{col} <= 1e5" for col in ['open', 'high', 'low', 'close']])
+            prices_df = prices_df.query(condition)
+
             Logger.info(f"Loaded prices for {ticker} with columns={list(prices_df.columns)} shape={prices_df.shape}.")
             # Join
             df_joined = TrainDataPreprocessor.prepare_joined_frame(daily_sentiment_, prices_df, schema_, ticker)
-            df_joined_list.append(df_joined)
-            ticker_joined_lengths.append(len(df_joined))
             df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
                 df_joined, ticker=ticker, predict_returns=args_.predict_returns
             )
-            sentiment_col = 'SentimentScore'
-            use_sentiment_in_features = 'finbert' in args_.model.lower()
-            df_supervised_list.append(df_supervised)
-            ticker_lengths.append(len(df_supervised))
+            return df_supervised, df_joined, len(df_supervised), len(df_joined), feat_cols
+
+        feat_cols = None
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(process_ticker, ticker) for ticker in tickers_]
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result[0] is not None:  # Only append if not skipped
+                    df_supervised_list.append(result[0])
+                    df_joined_list.append(result[1])
+                    ticker_lengths.append(result[2])
+                    ticker_joined_lengths.append(result[3])
+                    if feat_cols is not None:
+                        assert feat_cols == result[4], "Feature columns mismatch between tickers"
+                    feat_cols = result[4]
+        Logger.info(f"{feat_cols=}")
         df_supervised = pd.concat(df_supervised_list, ignore_index=True)
         df_joined = pd.concat(df_joined_list, ignore_index=True)
+        Logger.info(f"Combined supervised dataframe shape: {df_supervised.shape}")
         sentiment_col = 'SentimentScore'
         use_sentiment_in_features = 'finbert' in args_.model.lower()
         (dl_train, dl_val, dl_test, y_scaler,
@@ -335,8 +352,11 @@ class Pipeline:
         any_cand = sorted(list(load_dir.glob("*.pt")) + list(load_dir.glob("*.pth")))
         return any_cand[0] if any_cand else None
     @staticmethod
-    def _list_all_tickers(prices_dir: Path) -> List[str]:
-        return sorted({f.stem.upper() for f in prices_dir.glob("*.csv")})
+    def _list_all_tickers(tickers_path: Path) -> List[str]:
+        with open(tickers_path, 'r') as f:
+            tickers_json = json.load(f)
+        return tickers_json["tickers"]
+
     @staticmethod
     def load_fnspid_news(fnspid_news: str, use_bodies: bool) -> pd.DataFrame:
         usecols = ["Date", "Article_title", "Stock_symbol"]
@@ -392,8 +412,12 @@ class Pipeline:
             "--kaggle-csv-path", default="~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
             help="Kaggle News CSV path")
         ap.add_argument(
-            "--prices-dir", default="~/Projects/finBert/FNSPID/Stock_price/full_history",
-            help="Prices directory (OHLCV CSVs per ticker)")
+            "--prices-dir", default="~/Projects/finBert/yf",
+            help="Directory containing historical price CSVs named <TICKER>.csv")
+        ap.add_argument(
+            "--tickers-path", default="~/Projects/finBert/yf/tickers.json",
+            help="Path to historical tickers.json"
+        )
         ap.add_argument(
             "--sentiment-csv-path-in", required=False,
             help="If provided, load precomputed daily sentiment CSV from this path and skip FinBERT.")
@@ -449,8 +473,8 @@ class Pipeline:
             "--scale-method", default="minmax", choices=["minmax", "standard"],
             help="Use minmax or standard scaling for features")
         ap.add_argument(
-            "--model", default="finbert-lstm", choices=["lstm", "rnn", "transformer", "tabmlp", "finbert-lstm", "finbert-rnn", "finbert-transformer", "finbert-tabmlp"],
-            help="Model to use: 'lstm', 'rnn', 'transformer', 'tabmlp', or their finbert variants")
+            "--model", default="finbert-lstm", choices=["lstm", "rnn", "gru", "transformer", "tabmlp", "finbert-lstm", "finbert-rnn", "finbert-gru", "finbert-transformer", "finbert-tabmlp"],
+            help="Model to use: 'lstm', 'rnn', 'gru', 'transformer', 'tabmlp', or their finbert variants")
         ap.add_argument(
             "--seed", type=int, default=1254, #1254
             help="Preset seed for deterministic training (sets Python, NumPy, and PyTorch seeds)")

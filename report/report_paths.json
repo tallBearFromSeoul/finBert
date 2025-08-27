@@ -1,0 +1,14 @@
+{
+    "RNN": {
+        "Vanilla": "report/rnn/20250827-002046/",
+        "Sentiment": "report/rnn/20250827-003828/"
+    },
+    "LSTM": {
+        "Vanilla": "report/lstm/20250827-005255/",
+        "Sentiment": "report/lstm/20250827-010135/"
+    },
+    "TabMLP": {
+        "Vanilla": "report/tabmlp/20250827-011003/",
+        "Sentiment": "report/tabmlp/20250827-013218/"
+    }
+}
