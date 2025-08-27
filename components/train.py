@@ -13,13 +13,13 @@ from utils.logger import Logger
 class LSTMRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=100, batch_first=True)
-        self.lstm2 = nn.LSTM(input_size=100, hidden_size=100, batch_first=True)
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=256, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=256, hidden_size=256, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(100, 100)
-        self.fc2 = nn.Linear(100, 25)
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 32)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(25, 1)
+        self.fc_out = nn.Linear(32, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
@@ -58,13 +58,13 @@ class RNNRegressor(nn.Module):
 class GRURegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        self.gru1 = nn.GRU(input_size=input_size, hidden_size=100, batch_first=True)
-        self.gru2 = nn.GRU(input_size=100, hidden_size=100, batch_first=True)
+        self.gru1 = nn.GRU(input_size=input_size, hidden_size=256, batch_first=True)
+        self.gru2 = nn.GRU(input_size=256, hidden_size=256, batch_first=True)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc1 = nn.Linear(100, 100)
-        self.fc2 = nn.Linear(100, 25)
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 32)
         self.relu = nn.ReLU()
-        self.fc_out = nn.Linear(25, 1)
+        self.fc_out = nn.Linear(32, 1)
     def forward(self, x):
         if x.dim() == 2:
             x = x.unsqueeze(1) # (B, dim) -> (B, 1, dim)
@@ -82,7 +82,7 @@ class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super().__init__()
         position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(25600.0) / d_model))
         pe = torch.zeros(max_len, 1, d_model)
         pe[:, 0, 0::2] = torch.sin(position * div_term)
         pe[:, 0, 1::2] = torch.cos(position * div_term)

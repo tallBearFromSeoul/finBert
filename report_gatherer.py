@@ -25,7 +25,7 @@ def parse_output_dir(stdout_):
 def generate_reports():
     all_tickers = True
     tickers = ["BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
-    models = ["gru", "finbert-gru", "trasformer", "finbert-transformer",
+    models = ["gru", "finbert-gru", "transformer", "finbert-transformer",
               "rnn", "finbert-rnn", "lstm", "finbert-lstm", "tabmlp", "finbert-tabmlp"]
     model_map = {"gru": "GRU", "transformer": "Transformer", "finbert-transformer": "Transformer",
                  "rnn": "RNN", "lstm": "LSTM", "tabmlp": "TabMLP"}
@@ -150,4 +150,4 @@ if __name__ == "__main__":
             Logger.info(f"| {model} | {variant} | {train_mse_fmt} | {val_mse_fmt} | {test_mse_fmt} |")
     Logger.info("\n") # Separator between stocks
     # Generate plots for each stock
-    plot_comparisons(all_data, stocks, output_file=f'report/metrics_comparison.png')
+    plot_comparisons(all_data, stocks, f'report/metrics_comparison.png')
