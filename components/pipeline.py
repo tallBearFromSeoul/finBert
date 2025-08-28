@@ -1,24 +1,29 @@
 from datetime import datetime
 from pathlib import Path
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.gofplots import qqplot
 from typing import Dict, List, Optional, Tuple
 from yfinance import Ticker
 import argparse
 import concurrent.futures
 import json
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import os
 import torch
+
 from components.sentiment_generator import SentimentGenerator
 from components.data_paths import DataPaths
 from components.schema import Schema
 from components.settings import Settings
 from components.train_data_loader import TrainDataPreprocessor
-from components.train import evaluate, mse, mae, rmse, train_model
+from components.train import evaluate, train_model
 from utils.datetime_utils import ensure_utc
 from utils.logger import Logger
 from utils.pathlib_utils import ensure_dir
+
 class Pipeline:
     def __init__(self):
         args, runtime = Pipeline.argparse()
@@ -95,7 +100,8 @@ class Pipeline:
     def train(
         tickers_: List[str], daily_sentiment_: pd.DataFrame, prices_dir_: Path,
         schema_: Schema, start_date_: datetime, end_date_: datetime, args_: argparse.Namespace,
-        out_root_: Path, saved_root_: Path, eval_path_: Path, load_dir_: Optional[Path]):
+        out_root_: Path, saved_root_: Path, eval_path_: Path, load_dir_: Optional[Path]
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, int, int, Optional[List[str]]]:
         eval_rows: List[Dict[str, object]] = []
         df_supervised_list = []
         df_joined_list = []
@@ -117,14 +123,21 @@ class Pipeline:
             else:
                 prices_df = pd.read_csv(prices_path, parse_dates=["date"], date_format="%Y-%m-%d")
 
-            condition = ' & '.join([f"{col} <= 1e5" for col in ['open', 'high', 'low', 'close']])
-            prices_df = prices_df.query(condition)
+            if (prices_df[['open', 'high', 'low', 'close']].max() > 1e4).any():
+                Logger.warning(f"Skipping {ticker}: higher price values than 1e5 found in {prices_path}")
+                return pd.DataFrame(), pd.DataFrame(), 0, 0, None
+
+            if prices_df.empty:
+                Logger.warning(f"Skipping {ticker}: price file is empty after loading ({prices_path})")
+                return pd.DataFrame(), pd.DataFrame(), 0, 0, None
+
+            assert (prices_df[['open', 'high', 'low', 'close']].max() <= 1e4).all(), f"High price values found in {prices_path}"
 
             Logger.info(f"Loaded prices for {ticker} with columns={list(prices_df.columns)} shape={prices_df.shape}.")
             # Join
             df_joined = TrainDataPreprocessor.prepare_joined_frame(daily_sentiment_, prices_df, schema_, ticker)
             df_supervised, feat_cols = TrainDataPreprocessor.build_supervised_for_ticker(
-                df_joined, ticker=ticker, predict_returns=args_.predict_returns
+                df_joined, ticker, args_.predict_returns
             )
             return df_supervised, df_joined, len(df_supervised), len(df_joined), feat_cols
 
@@ -133,11 +146,11 @@ class Pipeline:
             futures = [executor.submit(process_ticker, ticker) for ticker in tickers_]
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
-                if result[0] is not None:  # Only append if not skipped
-                    df_supervised_list.append(result[0])
-                    df_joined_list.append(result[1])
-                    ticker_lengths.append(result[2])
-                    ticker_joined_lengths.append(result[3])
+                df_supervised_list.append(result[0])
+                df_joined_list.append(result[1])
+                ticker_lengths.append(result[2])
+                ticker_joined_lengths.append(result[3])
+                if result[4] is not None:
                     if feat_cols is not None:
                         assert feat_cols == result[4], "Feature columns mismatch between tickers"
                     feat_cols = result[4]
@@ -151,8 +164,7 @@ class Pipeline:
          original_y_train, original_y_val, original_y_test,
          dates_train, dates_val, dates_test) = TrainDataPreprocessor.make_dataloaders_for_ticker(
             df_supervised, sentiment_col, use_sentiment_in_features,
-            feat_cols, lookback=args_.lookback, batch_size=args_.batch_size,
-            scale_method=args_.scale_method, sentiment_threshold=args_.sentiment_threshold
+            feat_cols, args_.lookback, args_.batch_size, args_.scale_method, args_.sentiment_threshold
         )
         ticker = "all_tickers"
         # Prepare saved weights dir for this ticker
@@ -182,9 +194,9 @@ class Pipeline:
             y_scaler=y_scaler
         )
         # Evaluate
-        metrics_train = evaluate(model, dl_train, y_scaler, original_y_train)
-        metrics_val = evaluate(model, dl_val, y_scaler, original_y_val)
-        metrics_test = evaluate(model, dl_test, y_scaler, original_y_test)
+        metrics_train = evaluate(model, dl_train, y_scaler)
+        metrics_val = evaluate(model, dl_val, y_scaler)
+        metrics_test = evaluate(model, dl_test, y_scaler)
         metrics = metrics_test
         lb = args_.lookback
         y_true_train = metrics_train['y_true']
@@ -218,19 +230,19 @@ class Pipeline:
         full_dates = df_joined['trading_date'].values
         Pipeline.visualize_sentiment(sentiment_scores, full_dates, ticker, out_root_, tickers_, ticker_joined_lengths)
         Logger.info(
-            f"[{ticker}] Test (price) MSE={metrics['test_MSE']:.6f} | MAE={metrics['test_MAE']:.6f} | RMSE={metrics['test_RMSE']:.6f} "
-            f"(scaled MSE={metrics['test_MSE_scaled']:.6f})"
+            f"[{ticker}] Test (price) MSE={metrics['test_MSE']:.9f} | MAE={metrics['test_MAE']:.9f} | RMSE={metrics['test_RMSE']:.9f} "
+            f"(scaled MSE={metrics['test_MSE_scaled']:.9f})"
         )
         if len(train_hist) and len(val_hist):
             Logger.info(
-                f"[{ticker}] Final (price) Train MSE={price_hist['train_mse'][-1]:.6f} | "
-                f"Val MSE={price_hist['val_mse'][-1]:.6f} "
-                f"(scaled Train MSE={train_hist[-1]:.6f} | Val MSE={val_hist[-1]:.6f})"
+                f"[{ticker}] Final (price) Train MSE={price_hist['train_mse'][-1]:.9f} | "
+                f"Val MSE={price_hist['val_mse'][-1]:.9f} "
+                f"(scaled Train MSE={train_hist[-1]:.9f} | Val MSE={val_hist[-1]:.9f})"
             )
         Logger.info(
             f"[{ticker}] Best epoch={best_info['best_epoch']} | "
-            f"Best (price) Train MSE={best_info['best_train_mse']:.6f} | "
-            f"Best (price) Val MSE={best_info['best_val_mse']:.6f} | Saved at={best_info['best_path']}"
+            f"Best (price) Train MSE={best_info['best_train_mse']:.9f} | "
+            f"Best (price) Val MSE={best_info['best_val_mse']:.9f} | Saved at={best_info['best_path']}"
         )
         curve_data = {
             "epoch": np.arange(1, len(train_hist) + 1, dtype=int).tolist(),
@@ -280,127 +292,191 @@ class Pipeline:
             Logger.info(f"Wrote evaluation summary → {eval_path_}")
         else:
             Logger.warning("No evaluation rows to write; did all tickers_ fail to run?")
+
     @staticmethod
-    def visualize_sentiment(sentiment_scores: np.ndarray, dates: np.ndarray,
-                            ticker: str, out_root: Path, tickers: List[str],
-                            ticker_lengths: List[int]):
+    def visualize_sentiment(sentiment_scores_: np.ndarray, dates_: np.ndarray,
+                            ticker_: str, out_root_: Path, tickers_: List[str],
+                            ticker_lengths_: List[int]):
         """
         Visualize daily sentiment scores over time and save as PNG.
         """
-        plot_dir = ensure_dir(out_root / "plots")
+        plot_dir = ensure_dir(out_root_ / "plots")
         fig, ax = plt.subplots(figsize=(12, 6))
-        colors = plt.cm.tab10(np.linspace(0, 1, len(tickers)))
+        colors = plt.cm.tab10(np.linspace(0, 1, len(tickers_)))
         cum_row = 0
-        for i, tick in enumerate(tickers):
-            length = ticker_lengths[i]
+        for i, tick in enumerate(tickers_):
+            length = ticker_lengths_[i]
             end_row = cum_row + length
             start_j = cum_row
             end_j = end_row
             if start_j < end_j:
                 color = colors[i]
-                mask = ~np.isnan(sentiment_scores[start_j:end_j])
-                ax.scatter(dates[start_j:end_j][mask], sentiment_scores[start_j:end_j][mask], color=color, label=f'Sentiment {tick}')
-            # ax.axvline(dates[end_j - 1] if end_j > 0 else dates[0], color='gray', linestyle='--', label=f'End of {tick}')
+                mask = ~np.isnan(sentiment_scores_[start_j:end_j])
+                ax.scatter(dates_[start_j:end_j][mask], sentiment_scores_[start_j:end_j][mask], color=color, label=f'Sentiment {tick}')
             cum_row = end_row
-        ax.set_title(f'{ticker} Daily Sentiment')
+        ax.set_title(f'{ticker_} Daily Sentiment')
         ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Score')
         ax.legend()
         plt.gcf().autofmt_xdate()
-        plt.savefig(plot_dir / f"{ticker}_sentiment.png")
+        plt.savefig(plot_dir / f"{ticker_}_sentiment.png")
         plt.close()
-        Logger.info(f"Saved sentiment plot for {ticker} to {plot_dir / f'{ticker}_sentiment.png'}")
-    @staticmethod
-    def visualize_full_prediction(predictions: Dict[str, np.ndarray],
-                                  target_type: str, ticker: str, model: str, out_root: Path,
-                                  val_start_date, test_start_date, tickers: List[str]):
-        """
-        Visualize stitched true vs predicted values for train+val+test and save as PNG.
-        """
-        plot_dir = ensure_dir(out_root / "plots")
-        # Main plot with all tickers
-        fig, ax = plt.subplots(figsize=(22, 14))
-        d = predictions
-        ax.scatter(d['dates'], d['y_true'], color='blue', label=f'True', marker='o', s=10, alpha=0.6)
-        ax.scatter(d['dates'], d['y_pred'], color='red', linestyle='--', label=f'Predicted', marker='x', s=10, alpha=0.6)
-        for date, true, pred in zip(d['dates'], d['y_true'], d['y_pred']):
-            ax.vlines(x=date, ymin=min(true, pred), ymax=max(true, pred), color='black', linestyle='-', alpha=0.3)
-        ax.axvline(val_start_date, color='green', linestyle='--', label='Start of Validation')
-        ax.axvline(test_start_date, color='red', linestyle='--', label='Start of Test')
-        ax.set_title(f'{tickers} {model.upper()} Full {target_type.capitalize()} Prediction')
-        ax.set_xlabel('Close prices true and predicted')
-        ylabel = target_type.capitalize()
-        ax.set_ylabel(ylabel)
-        ax.legend()
-        ax.grid(True)
-        plt.gcf().autofmt_xdate()
-        plt.savefig(plot_dir / f"{ticker}_{model}_full_{target_type}_prediction.png")
-        plt.close()
-        Logger.info(f"Saved full prediction plot for {tickers} to {plot_dir / f'{ticker}_{model}_full_{target_type}_prediction.png'}")
+        Logger.info(f"Saved sentiment plot for {ticker_} to {plot_dir / f'{ticker_}_sentiment.png'}")
 
     @staticmethod
-    def find_weight_file_for_ticker(load_dir: Path, ticker: str) -> Optional[Path]:
-        if load_dir.is_file():
-            return load_dir
-        if not load_dir.exists() or not load_dir.is_dir():
-            return None
-        # Prefer files that contain the ticker symbol
-        cand = sorted(list(load_dir.glob(f"*{ticker}*.pt")) + list(load_dir.glob(f"*{ticker}*.pth")))
-        if cand:
-            return cand[0]
-        # Fallback: any .pt/.pth
-        any_cand = sorted(list(load_dir.glob("*.pt")) + list(load_dir.glob("*.pth")))
-        return any_cand[0] if any_cand else None
+    def visualize_full_prediction(predictions_: Dict[str, np.ndarray],
+                                target_type_: str, ticker_: str, model_: str, out_root_: Path,
+                                val_start_date_, test_start_date_, tickers_: List[str]):
+        """
+        Visualize stitched true vs predicted values for train+val+test and save as PNG.
+        Extended to include comprehensive regression diagnostic plots in subplots.
+        """
+        plot_dir = ensure_dir(out_root_ / "plots")
+        # Main figure with gridspec for multiple subplots
+        fig = plt.figure(figsize=(22, 35))
+        gs = gridspec.GridSpec(5, 2, figure=fig)
+
+        d = predictions_
+        residuals = d['y_true'] - d['y_pred']
+
+        # Row 1: Original time series plot (spans both columns)
+        ax_time = fig.add_subplot(gs[0, :])
+        ax_time.scatter(d['dates'], d['y_true'], color='blue', label=f'True', marker='o', s=10, alpha=0.6)
+        ax_time.scatter(d['dates'], d['y_pred'], color='red', linestyle='--', label=f'Predicted', marker='x', s=10, alpha=0.6)
+        for date, true, pred in zip(d['dates'], d['y_true'], d['y_pred']):
+            ax_time.vlines(x=date, ymin=min(true, pred), ymax=max(true, pred), color='black', linestyle='-', alpha=0.3)
+        ax_time.axvline(val_start_date_, color='green', linestyle='--', label='Start of Validation')
+        ax_time.axvline(test_start_date_, color='red', linestyle='--', label='Start of Test')
+        ax_time.set_title(f'True vs Predicted over Time')
+        ax_time.set_xlabel('Date')
+        ylabel = target_type_.capitalize()
+        ax_time.set_ylabel(ylabel)
+        ax_time.legend()
+        ax_time.grid(True)
+
+        # Row 2, Col 1: Actual vs Predicted scatter
+        ax_act_pred = fig.add_subplot(gs[1, 0])
+        ax_act_pred.scatter(d['y_true'], d['y_pred'], color='blue', alpha=0.5)
+        min_val = min(np.min(d['y_true']), np.min(d['y_pred']))
+        max_val = max(np.max(d['y_true']), np.max(d['y_pred']))
+        ax_act_pred.plot([min_val, max_val], [min_val, max_val], color='red', linestyle='--', label='y = x')
+        ax_act_pred.set_title('Actual vs Predicted')
+        ax_act_pred.set_xlabel('Actual')
+        ax_act_pred.set_ylabel('Predicted')
+        ax_act_pred.legend()
+        ax_act_pred.grid(True)
+
+        # Row 2, Col 2: Residuals vs Predicted
+        ax_res_pred = fig.add_subplot(gs[1, 1])
+        ax_res_pred.scatter(d['y_pred'], residuals, color='green', alpha=0.5)
+        ax_res_pred.axhline(0, color='red', linestyle='--')
+        ax_res_pred.set_title('Residuals vs Predicted')
+        ax_res_pred.set_xlabel('Predicted')
+        ax_res_pred.set_ylabel('Residuals')
+        ax_res_pred.grid(True)
+
+        # Row 3: Residuals over Time (spans both columns)
+        ax_res_time = fig.add_subplot(gs[2, :])
+        ax_res_time.scatter(d['dates'], residuals, color='orange', alpha=0.5)
+        ax_res_time.axhline(0, color='red', linestyle='--')
+        ax_res_time.set_title('Residuals over Time')
+        ax_res_time.set_xlabel('Date')
+        ax_res_time.set_ylabel('Residuals')
+        ax_res_time.grid(True)
+
+        # Row 4, Col 1: QQ Plot
+        ax_qq = fig.add_subplot(gs[3, 0])
+        qqplot(residuals, line='s', ax=ax_qq)
+        ax_qq.set_title('QQ Plot of Residuals')
+
+        # Row 4, Col 2: Histogram of Residuals
+        ax_hist = fig.add_subplot(gs[3, 1])
+        ax_hist.hist(residuals, bins=50, color='purple', alpha=0.7)
+        ax_hist.set_title('Histogram of Residuals')
+        ax_hist.set_xlabel('Residuals')
+        ax_hist.set_ylabel('Frequency')
+        ax_hist.grid(True)
+
+        # Row 5: ACF of Residuals (spans both columns)
+        ax_acf = fig.add_subplot(gs[4, :])
+        plot_acf(residuals, lags=min(40, len(residuals)-1), ax=ax_acf)
+        ax_acf.set_title('Autocorrelation of Residuals')
+
+        # Overall figure title and adjustments
+        fig.suptitle(f'{tickers_} {model_.upper()} Full {target_type_.capitalize()} Prediction and Diagnostics', fontsize=16)
+        fig.autofmt_xdate()
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        plt.savefig(plot_dir / f"{ticker_}_{model_}_full_{target_type_}_prediction.png")
+        plt.close()
+        Logger.info(f"Saved full prediction plot for {tickers_} to {plot_dir / f'{ticker_}_{model_}_full_{target_type_}_prediction.png'}")
+
+        @staticmethod
+        def find_weight_file_for_ticker_(load_dir_: Path, ticker_: str) -> Optional[Path]:
+            if load_dir_.is_file():
+                return load_dir_
+            if not load_dir_.exists() or not load_dir_.is_dir():
+                return None
+            # Prefer files that contain the ticker symbol
+            cand = sorted(list(load_dir_.glob(f"*{ticker_}*.pt")) + list(load_dir_.glob(f"*{ticker_}*.pth")))
+            if cand:
+                return cand[0]
+            # Fallback: any .pt/.pth
+            any_cand = sorted(list(load_dir_.glob("*.pt")) + list(load_dir_.glob("*.pth")))
+            return any_cand[0] if any_cand else None
+
     @staticmethod
-    def _list_all_tickers(tickers_path: Path) -> List[str]:
-        with open(tickers_path, 'r') as f:
+    def _list_all_tickers(tickers_path_: Path) -> List[str]:
+        with open(tickers_path_, 'r') as f:
             tickers_json = json.load(f)
         return tickers_json["tickers"]
 
     @staticmethod
-    def load_fnspid_news(fnspid_news: str, use_bodies: bool) -> pd.DataFrame:
+    def load_fnspid_news_(fnspid_news_: str, use_bodies_: bool) -> pd.DataFrame:
         usecols = ["Date", "Article_title", "Stock_symbol"]
         rename = {"Article_title": "title", "Stock_symbol": "stock", "Date": "date"}
-        if use_bodies:
+        if use_bodies_:
             usecols.append("Article_content")
             rename["Article_content"] = "body"
         dtypes = {
             "Article_title": str,
             "Stock_symbol": str,
-            "Article_content": str if use_bodies else None
+            "Article_content": str if use_bodies_ else None
         }
         article_df = pd.read_csv(
-            fnspid_news,
+            fnspid_news_,
             usecols=usecols,
             dtype={k: v for k, v in dtypes.items() if v is not None},
             parse_dates=["Date"],
             date_format="%Y-%m-%d"
         )
         return article_df.rename(columns=rename)
+
     @staticmethod
-    def load_kaggle_news(kaggle_news: str, use_bodies: bool) -> pd.DataFrame:
+    def load_kaggle_news(kaggle_news_: str, use_bodies_: bool) -> pd.DataFrame:
         usecols = ["title", "date", "stock"]
         article_df = pd.read_csv(
-            kaggle_news,
+            kaggle_news_,
             usecols=usecols,
             parse_dates=["date"]
         )
-        if use_bodies:
+        if use_bodies_:
             Logger.warning("No body column found in Kaggle CSV; falling back to titles only.")
         return article_df
+
     @staticmethod
-    def load_and_filter_news(fnspid_news: str, kaggle_news: str, data_source: str,
-                            start_date: pd.Timestamp, end_date: pd.Timestamp,
-                            use_bodies: bool) -> pd.DataFrame:
-        if data_source == "fnspid":
-            article_df = Pipeline.load_fnspid_news(fnspid_news, use_bodies)
-        elif data_source == "kaggle":
-            article_df = Pipeline.load_kaggle_news(kaggle_news, use_bodies)
+    def load_and_filter_news(fnspid_news_: str, kaggle_news_: str, data_source_: str,
+                            start_date_: pd.Timestamp, end_date_: pd.Timestamp, use_bodies_: bool) -> pd.DataFrame:
+        if data_source_ == "fnspid":
+            article_df = Pipeline.load_fnspid_news_(fnspid_news_, use_bodies_)
+        elif data_source_ == "kaggle":
+            article_df = Pipeline.load_kaggle_news(kaggle_news_, use_bodies_)
         else:
-            raise ValueError(f"Invalid data_source: {data_source}. Choose 'fnspid' or 'kaggle'.")
+            raise ValueError(f"Invalid data_source: {data_source_}. Choose 'fnspid' or 'kaggle'.")
         article_df["date"] = pd.to_datetime(article_df["date"], errors="coerce", utc=True)
-        article_df = article_df[(article_df["date"] > start_date) & (article_df["date"] < end_date)].dropna(subset=["date"])
+        article_df = article_df[(article_df["date"] > start_date_) & (article_df["date"] < end_date_)].dropna(subset=["date"])
         return article_df
+
     @staticmethod
     def argparse() -> Tuple[argparse.Namespace, str]:
         runtime = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -438,7 +514,7 @@ class Pipeline:
             help="Ticker(s) to train on (single stock or multiple tickers as a space-separated list, e.g., 'AAPL' or 'AAPL MSFT GOOGL')"
         )
         ap.add_argument(
-            "--sentiment-threshold", type=float, default=0.5,
+            "--sentiment-threshold", type=float, default=0.7,
             help="Threshold for absolute sentiment score to consider an article as having sentiment")
         ap.add_argument(
             "--market-tz", default="America/New_York")
@@ -479,6 +555,7 @@ class Pipeline:
             "--seed", type=int, default=1254, #1254
             help="Preset seed for deterministic training (sets Python, NumPy, and PyTorch seeds)")
         return ap.parse_args(), runtime
+
 # standard vs minmax
 # model: arima vs lstm vs transformer
 # returns vs price
@@ -486,5 +563,6 @@ class Pipeline:
 # plots for data with sentiment vs all data
 def main():
     Pipeline()
+
 if __name__ == "__main__":
     main()

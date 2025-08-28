@@ -94,7 +94,7 @@ class PositionalEncoding(nn.Module):
 class TransformerRegressor(nn.Module):
     def __init__(self, input_size: int, dropout_rate: float = 0.0):
         super().__init__()
-        d_model = 64
+        d_model = 128
         self.embed = nn.Linear(input_size, d_model)
         self.pos_encoder = PositionalEncoding(d_model)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=8, dim_feedforward=512, dropout=dropout_rate, batch_first=True)
@@ -373,7 +373,7 @@ def train_model(
     return model, train_hist_scaled, val_hist_scaled, out_info, price_hist
 
 # ----------------------------- Evaluation ----------------------------------- #
-def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler, original_y_test: np.ndarray):  # original_y_test kept for compatibility, but not used
+def evaluate(model: nn.Module, dl_test: DataLoader, y_scaler: MinMaxScaler):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     preds_scaled, trues_scaled = [], []

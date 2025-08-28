@@ -23,10 +23,11 @@ def parse_output_dir(stdout_):
     raise ValueError("Could not find logger output path in stdout")
 
 def generate_reports():
-    all_tickers = True
-    tickers = ["BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
-    models = ["gru", "finbert-gru", "transformer", "finbert-transformer",
-              "rnn", "finbert-rnn", "lstm", "finbert-lstm", "tabmlp", "finbert-tabmlp"]
+    all_tickers = False #True
+    tickers = ["ACAM", "BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
+    models = ["lstm", "finbert-lstm", "lstm", "finbert-lstm",
+              "gru", "finbert-gru", "transformer", "finbert-transformer",
+              "rnn", "finbert-rnn", "tabmlp", "finbert-tabmlp"]
     model_map = {"gru": "GRU", "transformer": "Transformer", "finbert-transformer": "Transformer",
                  "rnn": "RNN", "lstm": "LSTM", "tabmlp": "TabMLP"}
     data_sources = {"RNN": {}, "LSTM": {}, "TabMLP": {}, "Transformer": {}, "GRU": {}}
@@ -94,8 +95,7 @@ def plot_comparisons(stock_data_, stocks_, output_file_):
         ax.bar(x + bar_width/2, sentiment_values, bar_width, label='Sentiment', color=colors['Sentiment'])
         if i == 0:
             ax.set_title(f'{metric}')
-        if j == 0:
-            ax.set_ylabel(split)
+        ax.set_ylabel(split)
         ax.set_xticks(x)
         if i == len(splits) - 1:
             ax.set_xticklabels(models)
@@ -120,12 +120,14 @@ def plot_comparisons(stock_data_, stocks_, output_file_):
 if __name__ == "__main__":
     ensure_dir(Path("report"))
     ensure_dir(Path("report/rnn"))
+    ensure_dir(Path("report/gru"))
     ensure_dir(Path("report/lstm"))
     ensure_dir(Path("report/tabmlp"))
+    ensure_dir(Path("report/transformer"))
     data_sources = generate_reports()
     Logger.info("Data sources for reports: {data_sources}")
     stocks = list(data_sources.keys())
-    models = ['RNN', 'LSTM', 'TabMLP']
+    models = ["RNN", "GRU", "Transformer", "LSTM", "TabMLP"]
     variants = ['Vanilla', 'Sentiment']
     # Collect data
     all_data = {}
