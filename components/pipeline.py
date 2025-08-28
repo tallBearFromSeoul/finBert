@@ -330,20 +330,46 @@ class Pipeline:
         """
         Visualize stitched true vs predicted values for train+val+test and save as PNG.
         Extended to include comprehensive regression diagnostic plots in subplots.
+        Differentiates train, val, test in all plots with color coding and separate diagnostics.
         """
         plot_dir = ensure_dir(out_root_ / "plots")
         # Main figure with gridspec for multiple subplots
-        fig = plt.figure(figsize=(22, 35))
-        gs = gridspec.GridSpec(5, 2, figure=fig)
+        fig = plt.figure(figsize=(22, 40))
+        gs = gridspec.GridSpec(11, 2, figure=fig)
 
         d = predictions_
-        residuals = d['y_true'] - d['y_pred']
+        dates = d['dates']
+        y_true = d['y_true']
+        y_pred = d['y_pred']
+        residuals = y_true - y_pred
 
-        # Row 1: Original time series plot (spans both columns)
+        # Ensure date compatibility
+        if len(dates) > 0 and isinstance(dates[0], np.datetime64):
+            val_start_date_ = np.datetime64(val_start_date_)
+            test_start_date_ = np.datetime64(test_start_date_)
+
+        # Create masks for train, val, test
+        train_mask = dates < val_start_date_
+        val_mask = (dates >= val_start_date_) & (dates < test_start_date_)
+        test_mask = dates >= test_start_date_
+
+        # Indices for length checks
+        train_idx = np.nonzero(train_mask)[0]
+        val_idx = np.nonzero(val_mask)[0]
+        test_idx = np.nonzero(test_mask)[0]
+
+        # Color definitions
+        split_colors = {'train': 'blue', 'val': 'green', 'test': 'red'}
+        true_colors = {'train': 'darkblue', 'val': 'darkgreen', 'test': 'darkred'}
+        pred_colors = {'train': 'blue', 'val': 'green', 'test': 'red'}
+
+        # Row 0: Original time series plot (spans both columns)
         ax_time = fig.add_subplot(gs[0, :])
-        ax_time.scatter(d['dates'], d['y_true'], color='blue', label=f'True', marker='o', s=10, alpha=0.6)
-        ax_time.scatter(d['dates'], d['y_pred'], color='red', linestyle='--', label=f'Predicted', marker='x', s=10, alpha=0.6)
-        for date, true, pred in zip(d['dates'], d['y_true'], d['y_pred']):
+        for split in ['train', 'val', 'test']:
+            mask = locals()[f'{split}_mask']
+            ax_time.scatter(dates[mask], y_true[mask], color=true_colors[split], label=f'True {split.capitalize()}', marker='o', s=10, alpha=0.6)
+            ax_time.scatter(dates[mask], y_pred[mask], color=pred_colors[split], label=f'Pred {split.capitalize()}', marker='x', s=10, alpha=0.6)
+        for date, true, pred in zip(dates, y_true, y_pred):
             ax_time.vlines(x=date, ymin=min(true, pred), ymax=max(true, pred), color='black', linestyle='-', alpha=0.3)
         ax_time.axvline(val_start_date_, color='green', linestyle='--', label='Start of Validation')
         ax_time.axvline(test_start_date_, color='red', linestyle='--', label='Start of Test')
@@ -351,56 +377,138 @@ class Pipeline:
         ax_time.set_xlabel('Date')
         ylabel = target_type_.capitalize()
         ax_time.set_ylabel(ylabel)
-        ax_time.legend()
+        ax_time.legend(loc='upper left', ncol=2)
         ax_time.grid(True)
 
-        # Row 2, Col 1: Actual vs Predicted scatter
+        # Row 1, Col 0: Actual vs Predicted scatter
         ax_act_pred = fig.add_subplot(gs[1, 0])
-        ax_act_pred.scatter(d['y_true'], d['y_pred'], color='blue', alpha=0.5)
-        min_val = min(np.min(d['y_true']), np.min(d['y_pred']))
-        max_val = max(np.max(d['y_true']), np.max(d['y_pred']))
-        ax_act_pred.plot([min_val, max_val], [min_val, max_val], color='red', linestyle='--', label='y = x')
+        for split in ['train', 'val', 'test']:
+            mask = locals()[f'{split}_mask']
+            ax_act_pred.scatter(y_true[mask], y_pred[mask], color=split_colors[split], alpha=0.5, label=split.capitalize())
+        min_val = min(np.min(y_true), np.min(y_pred))
+        max_val = max(np.max(y_true), np.max(y_pred))
+        ax_act_pred.plot([min_val, max_val], [min_val, max_val], color='black', linestyle='--', label='y = x')
         ax_act_pred.set_title('Actual vs Predicted')
         ax_act_pred.set_xlabel('Actual')
         ax_act_pred.set_ylabel('Predicted')
         ax_act_pred.legend()
         ax_act_pred.grid(True)
 
-        # Row 2, Col 2: Residuals vs Predicted
+        # Row 1, Col 1: Residuals vs Predicted
         ax_res_pred = fig.add_subplot(gs[1, 1])
-        ax_res_pred.scatter(d['y_pred'], residuals, color='green', alpha=0.5)
-        ax_res_pred.axhline(0, color='red', linestyle='--')
+        for split in ['train', 'val', 'test']:
+            mask = locals()[f'{split}_mask']
+            ax_res_pred.scatter(y_pred[mask], residuals[mask], color=split_colors[split], alpha=0.5, label=split.capitalize())
+        ax_res_pred.axhline(0, color='black', linestyle='--')
         ax_res_pred.set_title('Residuals vs Predicted')
         ax_res_pred.set_xlabel('Predicted')
         ax_res_pred.set_ylabel('Residuals')
+        ax_res_pred.legend()
         ax_res_pred.grid(True)
 
-        # Row 3: Residuals over Time (spans both columns)
+        # Row 2: Residuals over Time (spans both columns)
         ax_res_time = fig.add_subplot(gs[2, :])
-        ax_res_time.scatter(d['dates'], residuals, color='orange', alpha=0.5)
-        ax_res_time.axhline(0, color='red', linestyle='--')
+        for split in ['train', 'val', 'test']:
+            mask = locals()[f'{split}_mask']
+            ax_res_time.scatter(dates[mask], residuals[mask], color=split_colors[split], alpha=0.5, label=split.capitalize())
+        ax_res_time.axhline(0, color='black', linestyle='--')
         ax_res_time.set_title('Residuals over Time')
         ax_res_time.set_xlabel('Date')
         ax_res_time.set_ylabel('Residuals')
+        ax_res_time.legend()
         ax_res_time.grid(True)
 
-        # Row 4, Col 1: QQ Plot
-        ax_qq = fig.add_subplot(gs[3, 0])
-        qqplot(residuals, line='s', ax=ax_qq)
-        ax_qq.set_title('QQ Plot of Residuals')
+        # Overall diagnostics
+        # Row 3, Col 0: QQ Plot All
+        ax_qq_all = fig.add_subplot(gs[3, 0])
+        if len(residuals) > 0:
+            qqplot(residuals, line='s', ax=ax_qq_all)
+        ax_qq_all.set_title('QQ Plot of All Residuals')
 
-        # Row 4, Col 2: Histogram of Residuals
-        ax_hist = fig.add_subplot(gs[3, 1])
-        ax_hist.hist(residuals, bins=50, color='purple', alpha=0.7)
-        ax_hist.set_title('Histogram of Residuals')
-        ax_hist.set_xlabel('Residuals')
-        ax_hist.set_ylabel('Frequency')
-        ax_hist.grid(True)
+        # Row 3, Col 1: Histogram of All Residuals
+        ax_hist_all = fig.add_subplot(gs[3, 1])
+        if len(residuals) > 0:
+            num_bins_all = max(10, int(np.sqrt(len(residuals))))
+            ax_hist_all.hist(residuals, bins=num_bins_all, color='purple', alpha=0.7)
+        ax_hist_all.set_title('Histogram of All Residuals')
+        ax_hist_all.set_xlabel('Residuals')
+        ax_hist_all.set_ylabel('Frequency')
+        ax_hist_all.grid(True)
 
-        # Row 5: ACF of Residuals (spans both columns)
-        ax_acf = fig.add_subplot(gs[4, :])
-        plot_acf(residuals, lags=min(40, len(residuals)-1), ax=ax_acf)
-        ax_acf.set_title('Autocorrelation of Residuals')
+        # Row 4: ACF of All Residuals (spans both columns)
+        ax_acf_all = fig.add_subplot(gs[4, :])
+        if len(residuals) > 1:
+            plot_acf(residuals, lags=min(40, len(residuals)-1), ax=ax_acf_all)
+        ax_acf_all.set_title('Autocorrelation of All Residuals')
+
+        # Train diagnostics
+        # Row 5, Col 0: QQ Plot Train
+        ax_qq_train = fig.add_subplot(gs[5, 0])
+        if len(train_idx) > 0:
+            qqplot(residuals[train_mask], line='s', ax=ax_qq_train)
+        ax_qq_train.set_title('QQ Plot of Train Residuals')
+
+        # Row 5, Col 1: Histogram of Train Residuals
+        ax_hist_train = fig.add_subplot(gs[5, 1])
+        if len(train_idx) > 0:
+            num_bins_train = max(10, int(np.sqrt(len(train_idx))))
+            ax_hist_train.hist(residuals[train_mask], bins=num_bins_train, color='blue', alpha=0.7)
+        ax_hist_train.set_title('Histogram of Train Residuals')
+        ax_hist_train.set_xlabel('Residuals')
+        ax_hist_train.set_ylabel('Frequency')
+        ax_hist_train.grid(True)
+
+        # Row 6: ACF of Train Residuals (spans both columns)
+        ax_acf_train = fig.add_subplot(gs[6, :])
+        if len(train_idx) > 1:
+            plot_acf(residuals[train_mask], lags=min(40, len(train_idx)-1), ax=ax_acf_train)
+        ax_acf_train.set_title('Autocorrelation of Train Residuals')
+
+        # Val diagnostics
+        # Row 7, Col 0: QQ Plot Val
+        ax_qq_val = fig.add_subplot(gs[7, 0])
+        if len(val_idx) > 0:
+            qqplot(residuals[val_mask], line='s', ax=ax_qq_val)
+        ax_qq_val.set_title('QQ Plot of Val Residuals')
+
+        # Row 7, Col 1: Histogram of Val Residuals
+        ax_hist_val = fig.add_subplot(gs[7, 1])
+        if len(val_idx) > 0:
+            num_bins_val = max(10, int(np.sqrt(len(val_idx))))
+            ax_hist_val.hist(residuals[val_mask], bins=num_bins_val, color='green', alpha=0.7)
+        ax_hist_val.set_title('Histogram of Val Residuals')
+        ax_hist_val.set_xlabel('Residuals')
+        ax_hist_val.set_ylabel('Frequency')
+        ax_hist_val.grid(True)
+
+        # Row 8: ACF of Val Residuals (spans both columns)
+        ax_acf_val = fig.add_subplot(gs[8, :])
+        if len(val_idx) > 1:
+            plot_acf(residuals[val_mask], lags=min(40, len(val_idx)-1), ax=ax_acf_val)
+        ax_acf_val.set_title('Autocorrelation of Val Residuals')
+
+        # Test diagnostics
+        # Row 9, Col 0: QQ Plot Test
+        ax_qq_test = fig.add_subplot(gs[9, 0])
+        if len(test_idx) > 0:
+            qqplot(residuals[test_mask], line='s', ax=ax_qq_test)
+        ax_qq_test.set_title('QQ Plot of Test Residuals')
+
+        # Row 9, Col 1: Histogram of Test Residuals
+        ax_hist_test = fig.add_subplot(gs[9, 1])
+        if len(test_idx) > 0:
+            num_bins_test = max(10, int(np.sqrt(len(test_idx))))
+            ax_hist_test.hist(residuals[test_mask], bins=num_bins_test, color='red', alpha=0.7)
+        ax_hist_test.set_title('Histogram of Test Residuals')
+        ax_hist_test.set_xlabel('Residuals')
+        ax_hist_test.set_ylabel('Frequency')
+        ax_hist_test.grid(True)
+
+        # Row 10: ACF of Test Residuals (spans both columns)
+        ax_acf_test = fig.add_subplot(gs[10, :])
+        if len(test_idx) > 1:
+            plot_acf(residuals[test_mask], lags=min(40, len(test_idx)-1), ax=ax_acf_test)
+        ax_acf_test.set_title('Autocorrelation of Test Residuals')
 
         # Overall figure title and adjustments
         fig.suptitle(f'{tickers_} {model_.upper()} Full {target_type_.capitalize()} Prediction and Diagnostics', fontsize=16)
@@ -411,19 +519,19 @@ class Pipeline:
         plt.close()
         Logger.info(f"Saved full prediction plot for {tickers_} to {plot_dir / f'{ticker_}_{model_}_full_{target_type_}_prediction.png'}")
 
-        @staticmethod
-        def find_weight_file_for_ticker_(load_dir_: Path, ticker_: str) -> Optional[Path]:
-            if load_dir_.is_file():
-                return load_dir_
-            if not load_dir_.exists() or not load_dir_.is_dir():
-                return None
-            # Prefer files that contain the ticker symbol
-            cand = sorted(list(load_dir_.glob(f"*{ticker_}*.pt")) + list(load_dir_.glob(f"*{ticker_}*.pth")))
-            if cand:
-                return cand[0]
-            # Fallback: any .pt/.pth
-            any_cand = sorted(list(load_dir_.glob("*.pt")) + list(load_dir_.glob("*.pth")))
-            return any_cand[0] if any_cand else None
+    @staticmethod
+    def find_weight_file_for_ticker_(load_dir_: Path, ticker_: str) -> Optional[Path]:
+        if load_dir_.is_file():
+            return load_dir_
+        if not load_dir_.exists() or not load_dir_.is_dir():
+            return None
+        # Prefer files that contain the ticker symbol
+        cand = sorted(list(load_dir_.glob(f"*{ticker_}*.pt")) + list(load_dir_.glob(f"*{ticker_}*.pth")))
+        if cand:
+            return cand[0]
+        # Fallback: any .pt/.pth
+        any_cand = sorted(list(load_dir_.glob("*.pt")) + list(load_dir_.glob("*.pth")))
+        return any_cand[0] if any_cand else None
 
     @staticmethod
     def _list_all_tickers(tickers_path_: Path) -> List[str]:
@@ -514,7 +622,7 @@ class Pipeline:
             help="Ticker(s) to train on (single stock or multiple tickers as a space-separated list, e.g., 'AAPL' or 'AAPL MSFT GOOGL')"
         )
         ap.add_argument(
-            "--sentiment-threshold", type=float, default=0.7,
+            "--sentiment-threshold", type=float, default=0.4,
             help="Threshold for absolute sentiment score to consider an article as having sentiment")
         ap.add_argument(
             "--market-tz", default="America/New_York")
@@ -525,9 +633,9 @@ class Pipeline:
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(
-            "--lookback", type=int, default=60)
+            "--lookback", type=int, default=14)
         ap.add_argument(
-            "--epochs", type=int, default=1000)
+            "--epochs", type=int, default=100)
         ap.add_argument(
             "--patience", type=int, default=60)
         ap.add_argument(

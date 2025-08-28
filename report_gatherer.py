@@ -23,7 +23,7 @@ def parse_output_dir(stdout_):
     raise ValueError("Could not find logger output path in stdout")
 
 def generate_reports():
-    all_tickers = False #True
+    all_tickers = True
     tickers = ["ACAM", "BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
     models = ["lstm", "finbert-lstm", "lstm", "finbert-lstm",
               "gru", "finbert-gru", "transformer", "finbert-transformer",
@@ -43,7 +43,7 @@ def generate_reports():
                 "--data-source", "kaggle",
                 "--model", model,
                 "--sentiment-csv-path", sentiment_csv_path,
-                #--predict-returns
+                #"--predict-returns"
             ]
         else:
             cmd = [
@@ -54,7 +54,7 @@ def generate_reports():
                 "--data-source", "kaggle",
                 "--model", model,
                 "--sentiment-csv-path", sentiment_csv_path,
-                #--predict-returns
+                #"--predict-returns"
             ]
         Logger.info(f"Running command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True)

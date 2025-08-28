@@ -1,0 +1,468 @@
+2025-08-28T18:18:40Z - INFO - [Pipeline::__init__] Loaded news dataframe with columns=['title', 'date', 'stock'] shape=(1277896, 3).
+2025-08-28T18:18:40Z - INFO - [SentimentGenerator::_load] Loaded precomputed sentiment from /home/tbfs/Projects/finBert/output/20250823-140342/sentiment_daily.csv
+2025-08-28T18:18:40Z - INFO - [train] Training predictor for ticker: ['ACAM', 'BMY', 'EBAY', 'EWI', 'BABA', 'DAL', 'JNJ', 'NFLX', 'TSLA']
+2025-08-28T18:18:40Z - WARNING - [process_ticker] Skipping ACAM: price file is empty after loading (/home/tbfs/Projects/finBert/yf/ACAM.csv)
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for BMY with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2516, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for EBAY with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2516, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for BABA with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(1330, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for EWI with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits', 'Capital Gains'] shape=(2516, 9).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for JNJ with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2516, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for NFLX with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2516, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for DAL with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2516, 8).
+2025-08-28T18:18:40Z - INFO - [process_ticker] Loaded prices for TSLA with columns=['date', 'open', 'high', 'low', 'close', 'volume', 'Dividends', 'Stock Splits'] shape=(2394, 8).
+2025-08-28T18:18:40Z - INFO - [train] feat_cols=['Open', 'High', 'Low', 'Volume', 'Close']
+2025-08-28T18:18:40Z - INFO - [train] Combined supervised dataframe shape: (18812, 14)
+2025-08-28T18:18:40Z - INFO - [SequenceDataset::__init__] len(self.valid_indices)=12 out of len(df_)=18812 samples are valid for lookback=60 with sentiment_col=SentimentScore
+2025-08-28T18:18:40Z - INFO - [SequenceDataset::__init__] len(self.valid_indices)=4 out of len(df_)=18812 samples are valid for lookback=60 with sentiment_col=SentimentScore
+2025-08-28T18:18:40Z - INFO - [SequenceDataset::__init__] len(self.valid_indices)=5 out of len(df_)=18812 samples are valid for lookback=60 with sentiment_col=SentimentScore
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 001 | train (scaled) MSE: mean=0.143744 med=0.063555 std=0.218910 min=0.003862 max=0.802372 | val (scaled) MSE: mean=0.043010 med=0.026082 std=0.038403 min=0.011368 max=0.108506
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 001 | train (price) MSE=0.000954 MAE=0.024442 RMSE=0.030881 | val (price) MSE=0.000285 MAE=0.015434 RMSE=0.016892
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000285 at epoch 1; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch001.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 002 | train (scaled) MSE: mean=0.143027 med=0.062899 std=0.218313 min=0.003726 max=0.799890 | val (scaled) MSE: mean=0.042720 med=0.025741 std=0.038129 min=0.011598 max=0.107800
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 002 | train (price) MSE=0.000949 MAE=0.024351 RMSE=0.030804 | val (price) MSE=0.000283 MAE=0.015391 RMSE=0.016835
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000283 at epoch 2; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch002.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 003 | train (scaled) MSE: mean=0.142316 med=0.062194 std=0.217717 min=0.003631 max=0.797732 | val (scaled) MSE: mean=0.042447 med=0.025417 std=0.037867 min=0.011824 max=0.107129
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 003 | train (price) MSE=0.000944 MAE=0.024270 RMSE=0.030727 | val (price) MSE=0.000282 MAE=0.015350 RMSE=0.016781
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000282 at epoch 3; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch003.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 004 | train (scaled) MSE: mean=0.141687 med=0.061553 std=0.217245 min=0.003378 max=0.796108 | val (scaled) MSE: mean=0.042134 med=0.025042 std=0.037568 min=0.012091 max=0.106360
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 004 | train (price) MSE=0.000940 MAE=0.024190 RMSE=0.030659 | val (price) MSE=0.000280 MAE=0.015303 RMSE=0.016719
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000280 at epoch 4; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch004.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 005 | train (scaled) MSE: mean=0.140990 med=0.060924 std=0.216861 min=0.003279 max=0.794294 | val (scaled) MSE: mean=0.041837 med=0.024693 std=0.037279 min=0.012344 max=0.105618
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 005 | train (price) MSE=0.000935 MAE=0.024101 RMSE=0.030584 | val (price) MSE=0.000278 MAE=0.015257 RMSE=0.016660
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000278 at epoch 5; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch005.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 006 | train (scaled) MSE: mean=0.140302 med=0.060503 std=0.216253 min=0.003147 max=0.792445 | val (scaled) MSE: mean=0.041538 med=0.024342 std=0.036987 min=0.012603 max=0.104867
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 006 | train (price) MSE=0.000931 MAE=0.024017 RMSE=0.030509 | val (price) MSE=0.000276 MAE=0.015212 RMSE=0.016600
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000276 at epoch 6; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch006.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 007 | train (scaled) MSE: mean=0.139613 med=0.059793 std=0.215686 min=0.002970 max=0.789912 | val (scaled) MSE: mean=0.041248 med=0.023999 std=0.036702 min=0.012860 max=0.104136
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 007 | train (price) MSE=0.000926 MAE=0.023926 RMSE=0.030434 | val (price) MSE=0.000274 MAE=0.015167 RMSE=0.016542
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000274 at epoch 7; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch007.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 008 | train (scaled) MSE: mean=0.138879 med=0.058932 std=0.214958 min=0.002886 max=0.787403 | val (scaled) MSE: mean=0.040983 med=0.023684 std=0.036442 min=0.013099 max=0.103466
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 008 | train (price) MSE=0.000921 MAE=0.023844 RMSE=0.030354 | val (price) MSE=0.000272 MAE=0.015125 RMSE=0.016489
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000272 at epoch 8; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch008.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 009 | train (scaled) MSE: mean=0.138276 med=0.058540 std=0.214541 min=0.002684 max=0.785720 | val (scaled) MSE: mean=0.040693 med=0.023337 std=0.036157 min=0.013367 max=0.102732
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 009 | train (price) MSE=0.000917 MAE=0.023766 RMSE=0.030288 | val (price) MSE=0.000270 MAE=0.015080 RMSE=0.016431
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000270 at epoch 9; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch009.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 010 | train (scaled) MSE: mean=0.137619 med=0.057699 std=0.214137 min=0.002549 max=0.784194 | val (scaled) MSE: mean=0.040424 med=0.023011 std=0.035893 min=0.013625 max=0.102048
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 010 | train (price) MSE=0.000913 MAE=0.023677 RMSE=0.030216 | val (price) MSE=0.000268 MAE=0.015037 RMSE=0.016376
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000268 at epoch 10; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch010.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 011 | train (scaled) MSE: mean=0.136906 med=0.056997 std=0.213718 min=0.002522 max=0.782776 | val (scaled) MSE: mean=0.040170 med=0.022701 std=0.035646 min=0.013871 max=0.101407
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 011 | train (price) MSE=0.000908 MAE=0.023594 RMSE=0.030137 | val (price) MSE=0.000266 MAE=0.014996 RMSE=0.016325
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000266 at epoch 11; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch011.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 012 | train (scaled) MSE: mean=0.136203 med=0.056328 std=0.213157 min=0.002418 max=0.780903 | val (scaled) MSE: mean=0.039872 med=0.022346 std=0.035343 min=0.014167 max=0.100630
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 012 | train (price) MSE=0.000904 MAE=0.023506 RMSE=0.030060 | val (price) MSE=0.000265 MAE=0.014948 RMSE=0.016264
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000265 at epoch 12; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch012.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 013 | train (scaled) MSE: mean=0.135422 med=0.055830 std=0.212613 min=0.002121 max=0.779057 | val (scaled) MSE: mean=0.039500 med=0.021902 std=0.034969 min=0.014534 max=0.099661
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 013 | train (price) MSE=0.000898 MAE=0.023396 RMSE=0.029973 | val (price) MSE=0.000262 MAE=0.014887 RMSE=0.016188
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000262 at epoch 13; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch013.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 014 | train (scaled) MSE: mean=0.134470 med=0.055042 std=0.211536 min=0.002066 max=0.774639 | val (scaled) MSE: mean=0.039179 med=0.021518 std=0.034644 min=0.014860 max=0.098819
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 014 | train (price) MSE=0.000892 MAE=0.023282 RMSE=0.029868 | val (price) MSE=0.000260 MAE=0.014834 RMSE=0.016122
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000260 at epoch 14; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch014.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 015 | train (scaled) MSE: mean=0.133701 med=0.054178 std=0.211160 min=0.001870 max=0.773326 | val (scaled) MSE: mean=0.038823 med=0.021091 std=0.034284 min=0.015229 max=0.097881
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 015 | train (price) MSE=0.000887 MAE=0.023181 RMSE=0.029782 | val (price) MSE=0.000258 MAE=0.014774 RMSE=0.016049
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000258 at epoch 15; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch015.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 016 | train (scaled) MSE: mean=0.132851 med=0.053694 std=0.210389 min=0.001808 max=0.770734 | val (scaled) MSE: mean=0.038508 med=0.020715 std=0.033962 min=0.015562 max=0.097042
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 016 | train (price) MSE=0.000881 MAE=0.023081 RMSE=0.029688 | val (price) MSE=0.000255 MAE=0.014721 RMSE=0.015983
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000255 at epoch 16; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch016.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 017 | train (scaled) MSE: mean=0.132036 med=0.053000 std=0.209503 min=0.001704 max=0.767535 | val (scaled) MSE: mean=0.038226 med=0.020376 std=0.033673 min=0.015865 max=0.096287
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 017 | train (price) MSE=0.000876 MAE=0.022985 RMSE=0.029596 | val (price) MSE=0.000254 MAE=0.014673 RMSE=0.015925
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000254 at epoch 17; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch017.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 018 | train (scaled) MSE: mean=0.131326 med=0.052211 std=0.209243 min=0.001545 max=0.766544 | val (scaled) MSE: mean=0.037932 med=0.020021 std=0.033372 min=0.016190 max=0.095497
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 018 | train (price) MSE=0.000871 MAE=0.022877 RMSE=0.029517 | val (price) MSE=0.000252 MAE=0.014622 RMSE=0.015863
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000252 at epoch 18; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch018.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 019 | train (scaled) MSE: mean=0.130586 med=0.051605 std=0.208347 min=0.001387 max=0.763193 | val (scaled) MSE: mean=0.037656 med=0.019905 std=0.033092 min=0.016057 max=0.094757
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 019 | train (price) MSE=0.000866 MAE=0.022788 RMSE=0.029433 | val (price) MSE=0.000250 MAE=0.014573 RMSE=0.015806
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000250 at epoch 19; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch019.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 020 | train (scaled) MSE: mean=0.129983 med=0.050831 std=0.208164 min=0.001310 max=0.762384 | val (scaled) MSE: mean=0.037367 med=0.019877 std=0.032800 min=0.015735 max=0.093980
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 020 | train (price) MSE=0.000862 MAE=0.022691 RMSE=0.029365 | val (price) MSE=0.000248 MAE=0.014521 RMSE=0.015745
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000248 at epoch 20; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch020.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 021 | train (scaled) MSE: mean=0.129296 med=0.050415 std=0.207157 min=0.001207 max=0.758427 | val (scaled) MSE: mean=0.037108 med=0.019859 std=0.032530 min=0.015450 max=0.093265
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 021 | train (price) MSE=0.000858 MAE=0.022611 RMSE=0.029288 | val (price) MSE=0.000246 MAE=0.014475 RMSE=0.015690
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000246 at epoch 21; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch021.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 022 | train (scaled) MSE: mean=0.128650 med=0.049732 std=0.206989 min=0.001177 max=0.757945 | val (scaled) MSE: mean=0.036864 med=0.019847 std=0.032270 min=0.015181 max=0.092580
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 022 | train (price) MSE=0.000853 MAE=0.022521 RMSE=0.029214 | val (price) MSE=0.000245 MAE=0.014431 RMSE=0.015638
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000245 at epoch 22; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch022.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 023 | train (scaled) MSE: mean=0.128063 med=0.049407 std=0.206244 min=0.001011 max=0.754809 | val (scaled) MSE: mean=0.036611 med=0.019833 std=0.032001 min=0.014908 max=0.091870
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 023 | train (price) MSE=0.000850 MAE=0.022436 RMSE=0.029148 | val (price) MSE=0.000243 MAE=0.014385 RMSE=0.015585
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000243 at epoch 23; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch023.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 024 | train (scaled) MSE: mean=0.127444 med=0.048636 std=0.205882 min=0.000931 max=0.753455 | val (scaled) MSE: mean=0.036369 med=0.019822 std=0.031749 min=0.014639 max=0.091194
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 024 | train (price) MSE=0.000845 MAE=0.022347 RMSE=0.029077 | val (price) MSE=0.000241 MAE=0.014341 RMSE=0.015533
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000241 at epoch 24; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch024.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 025 | train (scaled) MSE: mean=0.126838 med=0.048271 std=0.205385 min=0.000925 max=0.751713 | val (scaled) MSE: mean=0.036144 med=0.019811 std=0.031512 min=0.014395 max=0.090559
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 025 | train (price) MSE=0.000841 MAE=0.022276 RMSE=0.029008 | val (price) MSE=0.000240 MAE=0.014299 RMSE=0.015485
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000240 at epoch 25; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch025.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 026 | train (scaled) MSE: mean=0.126293 med=0.047831 std=0.204747 min=0.000816 max=0.749520 | val (scaled) MSE: mean=0.035910 med=0.019805 std=0.031268 min=0.014130 max=0.089899
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 026 | train (price) MSE=0.000838 MAE=0.022200 RMSE=0.028946 | val (price) MSE=0.000238 MAE=0.014255 RMSE=0.015435
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000238 at epoch 26; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch026.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 027 | train (scaled) MSE: mean=0.125681 med=0.047296 std=0.204206 min=0.000796 max=0.747419 | val (scaled) MSE: mean=0.035702 med=0.019801 std=0.031048 min=0.013899 max=0.089304
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 027 | train (price) MSE=0.000834 MAE=0.022125 RMSE=0.028875 | val (price) MSE=0.000237 MAE=0.014215 RMSE=0.015390
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000237 at epoch 27; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch027.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 028 | train (scaled) MSE: mean=0.125207 med=0.046527 std=0.203862 min=0.000721 max=0.745824 | val (scaled) MSE: mean=0.035442 med=0.019800 std=0.030772 min=0.013612 max=0.088557
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 028 | train (price) MSE=0.000831 MAE=0.022047 RMSE=0.028821 | val (price) MSE=0.000235 MAE=0.014165 RMSE=0.015334
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000235 at epoch 28; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch028.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 029 | train (scaled) MSE: mean=0.124528 med=0.046196 std=0.202973 min=0.000637 max=0.742774 | val (scaled) MSE: mean=0.035229 med=0.019802 std=0.030545 min=0.013374 max=0.087939
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 029 | train (price) MSE=0.000826 MAE=0.021971 RMSE=0.028743 | val (price) MSE=0.000234 MAE=0.014124 RMSE=0.015288
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000234 at epoch 29; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch029.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 030 | train (scaled) MSE: mean=0.123992 med=0.045689 std=0.202653 min=0.000609 max=0.741434 | val (scaled) MSE: mean=0.034989 med=0.019806 std=0.030290 min=0.013106 max=0.087239
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 030 | train (price) MSE=0.000823 MAE=0.021888 RMSE=0.028681 | val (price) MSE=0.000232 MAE=0.014077 RMSE=0.015236
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000232 at epoch 30; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch030.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 031 | train (scaled) MSE: mean=0.123403 med=0.045294 std=0.202176 min=0.000525 max=0.739676 | val (scaled) MSE: mean=0.034765 med=0.019811 std=0.030051 min=0.012857 max=0.086581
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 031 | train (price) MSE=0.000819 MAE=0.021803 RMSE=0.028612 | val (price) MSE=0.000231 MAE=0.014032 RMSE=0.015187
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000231 at epoch 31; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch031.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 032 | train (scaled) MSE: mean=0.122853 med=0.044728 std=0.201746 min=0.000504 max=0.738081 | val (scaled) MSE: mean=0.034552 med=0.019813 std=0.029828 min=0.012623 max=0.085959
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 032 | train (price) MSE=0.000815 MAE=0.021729 RMSE=0.028549 | val (price) MSE=0.000229 MAE=0.013989 RMSE=0.015140
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000229 at epoch 32; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch032.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 033 | train (scaled) MSE: mean=0.122367 med=0.044229 std=0.201224 min=0.000440 max=0.736069 | val (scaled) MSE: mean=0.034339 med=0.019810 std=0.029615 min=0.012384 max=0.085351
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 033 | train (price) MSE=0.000812 MAE=0.021660 RMSE=0.028492 | val (price) MSE=0.000228 MAE=0.013945 RMSE=0.015093
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000228 at epoch 33; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch033.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 034 | train (scaled) MSE: mean=0.121840 med=0.043835 std=0.200861 min=0.000390 max=0.734837 | val (scaled) MSE: mean=0.034155 med=0.019813 std=0.029429 min=0.012174 max=0.084820
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 034 | train (price) MSE=0.000808 MAE=0.021583 RMSE=0.028431 | val (price) MSE=0.000227 MAE=0.013907 RMSE=0.015053
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000227 at epoch 34; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch034.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 035 | train (scaled) MSE: mean=0.121415 med=0.043497 std=0.200513 min=0.000332 max=0.733587 | val (scaled) MSE: mean=0.033950 med=0.019821 std=0.029218 min=0.011941 max=0.084215
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 035 | train (price) MSE=0.000805 MAE=0.021510 RMSE=0.028381 | val (price) MSE=0.000225 MAE=0.013864 RMSE=0.015008
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000225 at epoch 35; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch035.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 036 | train (scaled) MSE: mean=0.120909 med=0.042989 std=0.200034 min=0.000312 max=0.731774 | val (scaled) MSE: mean=0.033765 med=0.019831 std=0.029023 min=0.011737 max=0.083660
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 036 | train (price) MSE=0.000802 MAE=0.021445 RMSE=0.028322 | val (price) MSE=0.000224 MAE=0.013825 RMSE=0.014967
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000224 at epoch 36; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch036.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 037 | train (scaled) MSE: mean=0.120462 med=0.042630 std=0.199599 min=0.000282 max=0.729981 | val (scaled) MSE: mean=0.033579 med=0.019843 std=0.028827 min=0.011530 max=0.083099
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 037 | train (price) MSE=0.000799 MAE=0.021378 RMSE=0.028270 | val (price) MSE=0.000223 MAE=0.013786 RMSE=0.014925
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000223 at epoch 37; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch037.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 038 | train (scaled) MSE: mean=0.119935 med=0.042304 std=0.198940 min=0.000232 max=0.727640 | val (scaled) MSE: mean=0.033428 med=0.019857 std=0.028666 min=0.011361 max=0.082638
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 038 | train (price) MSE=0.000796 MAE=0.021314 RMSE=0.028208 | val (price) MSE=0.000222 MAE=0.013753 RMSE=0.014892
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000222 at epoch 38; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch038.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 039 | train (scaled) MSE: mean=0.119490 med=0.042076 std=0.198422 min=0.000206 max=0.725741 | val (scaled) MSE: mean=0.033261 med=0.019875 std=0.028487 min=0.011175 max=0.082121
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 039 | train (price) MSE=0.000793 MAE=0.021252 RMSE=0.028155 | val (price) MSE=0.000221 MAE=0.013718 RMSE=0.014855
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000221 at epoch 39; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch039.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 040 | train (scaled) MSE: mean=0.119024 med=0.041395 std=0.198104 min=0.000193 max=0.724395 | val (scaled) MSE: mean=0.033084 med=0.019896 std=0.028294 min=0.010976 max=0.081565
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 040 | train (price) MSE=0.000790 MAE=0.021183 RMSE=0.028100 | val (price) MSE=0.000219 MAE=0.013679 RMSE=0.014815
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000219 at epoch 40; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch040.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 041 | train (scaled) MSE: mean=0.118606 med=0.040903 std=0.197843 min=0.000157 max=0.723576 | val (scaled) MSE: mean=0.032886 med=0.019923 std=0.028082 min=0.010752 max=0.080945
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 041 | train (price) MSE=0.000787 MAE=0.021112 RMSE=0.028051 | val (price) MSE=0.000218 MAE=0.013636 RMSE=0.014770
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000218 at epoch 41; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch041.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 042 | train (scaled) MSE: mean=0.118095 med=0.040563 std=0.197199 min=0.000130 max=0.721076 | val (scaled) MSE: mean=0.032713 med=0.019948 std=0.027898 min=0.010556 max=0.080401
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 042 | train (price) MSE=0.000783 MAE=0.021047 RMSE=0.027990 | val (price) MSE=0.000217 MAE=0.013597 RMSE=0.014732
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000217 at epoch 42; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch042.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 043 | train (scaled) MSE: mean=0.117678 med=0.040073 std=0.196915 min=0.000120 max=0.720108 | val (scaled) MSE: mean=0.032521 med=0.019977 std=0.027694 min=0.010339 max=0.079792
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 043 | train (price) MSE=0.000781 MAE=0.020981 RMSE=0.027941 | val (price) MSE=0.000216 MAE=0.013554 RMSE=0.014688
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000216 at epoch 43; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch043.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 044 | train (scaled) MSE: mean=0.117123 med=0.039668 std=0.196403 min=0.000101 max=0.718358 | val (scaled) MSE: mean=0.032359 med=0.020003 std=0.027521 min=0.010156 max=0.079274
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 044 | train (price) MSE=0.000777 MAE=0.020907 RMSE=0.027875 | val (price) MSE=0.000215 MAE=0.013517 RMSE=0.014652
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000215 at epoch 44; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch044.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 045 | train (scaled) MSE: mean=0.116704 med=0.039486 std=0.195882 min=0.000075 max=0.716191 | val (scaled) MSE: mean=0.032190 med=0.020034 std=0.027341 min=0.009963 max=0.078727
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 045 | train (price) MSE=0.000774 MAE=0.020841 RMSE=0.027825 | val (price) MSE=0.000214 MAE=0.013479 RMSE=0.014613
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000214 at epoch 45; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch045.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 046 | train (scaled) MSE: mean=0.116244 med=0.038965 std=0.195505 min=0.000059 max=0.714919 | val (scaled) MSE: mean=0.032020 med=0.020067 std=0.027160 min=0.009769 max=0.078176
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 046 | train (price) MSE=0.000771 MAE=0.020775 RMSE=0.027770 | val (price) MSE=0.000212 MAE=0.013439 RMSE=0.014575
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000212 at epoch 46; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch046.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 047 | train (scaled) MSE: mean=0.115732 med=0.038554 std=0.195073 min=0.000052 max=0.713384 | val (scaled) MSE: mean=0.031876 med=0.020097 std=0.027007 min=0.009605 max=0.077703
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 047 | train (price) MSE=0.000768 MAE=0.020706 RMSE=0.027709 | val (price) MSE=0.000211 MAE=0.013405 RMSE=0.014542
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000211 at epoch 47; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch047.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 048 | train (scaled) MSE: mean=0.115263 med=0.038117 std=0.194588 min=0.000041 max=0.711575 | val (scaled) MSE: mean=0.031738 med=0.020127 std=0.026860 min=0.009450 max=0.077249
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 048 | train (price) MSE=0.000765 MAE=0.020639 RMSE=0.027653 | val (price) MSE=0.000211 MAE=0.013373 RMSE=0.014511
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000211 at epoch 48; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch048.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 049 | train (scaled) MSE: mean=0.114799 med=0.037723 std=0.194137 min=0.000025 max=0.710130 | val (scaled) MSE: mean=0.031593 med=0.020162 std=0.026705 min=0.009284 max=0.076765
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 049 | train (price) MSE=0.000762 MAE=0.020571 RMSE=0.027597 | val (price) MSE=0.000210 MAE=0.013338 RMSE=0.014477
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000210 at epoch 49; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch049.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 050 | train (scaled) MSE: mean=0.114352 med=0.037223 std=0.193812 min=0.000021 max=0.708822 | val (scaled) MSE: mean=0.031430 med=0.020203 std=0.026531 min=0.009099 max=0.076215
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 050 | train (price) MSE=0.000759 MAE=0.020498 RMSE=0.027543 | val (price) MSE=0.000209 MAE=0.013299 RMSE=0.014440
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000209 at epoch 50; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch050.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 051 | train (scaled) MSE: mean=0.113863 med=0.037264 std=0.193129 min=0.000007 max=0.706248 | val (scaled) MSE: mean=0.031266 med=0.020245 std=0.026357 min=0.008912 max=0.075661
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 051 | train (price) MSE=0.000755 MAE=0.020426 RMSE=0.027484 | val (price) MSE=0.000207 MAE=0.013259 RMSE=0.014402
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000207 at epoch 51; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch051.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 052 | train (scaled) MSE: mean=0.113403 med=0.037114 std=0.192922 min=0.000003 max=0.705570 | val (scaled) MSE: mean=0.031095 med=0.020290 std=0.026179 min=0.008717 max=0.075084
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 052 | train (price) MSE=0.000752 MAE=0.020350 RMSE=0.027429 | val (price) MSE=0.000206 MAE=0.013217 RMSE=0.014363
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000206 at epoch 52; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch052.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 053 | train (scaled) MSE: mean=0.112819 med=0.036911 std=0.192359 min=0.000001 max=0.703633 | val (scaled) MSE: mean=0.030960 med=0.020329 std=0.026037 min=0.008562 max=0.074620
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 053 | train (price) MSE=0.000748 MAE=0.020269 RMSE=0.027358 | val (price) MSE=0.000205 MAE=0.013183 RMSE=0.014332
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000205 at epoch 53; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch053.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 054 | train (scaled) MSE: mean=0.112404 med=0.036859 std=0.191903 min=0.000000 max=0.701874 | val (scaled) MSE: mean=0.030790 med=0.020380 std=0.025859 min=0.008369 max=0.074032
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 054 | train (price) MSE=0.000746 MAE=0.020199 RMSE=0.027308 | val (price) MSE=0.000204 MAE=0.013140 RMSE=0.014292
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000204 at epoch 54; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch054.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 055 | train (scaled) MSE: mean=0.111818 med=0.036652 std=0.191457 min=0.000004 max=0.700430 | val (scaled) MSE: mean=0.030643 med=0.020430 std=0.025702 min=0.008200 max=0.073511
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 055 | train (price) MSE=0.000742 MAE=0.020138 RMSE=0.027236 | val (price) MSE=0.000203 MAE=0.013102 RMSE=0.014258
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000203 at epoch 55; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch055.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 056 | train (scaled) MSE: mean=0.111270 med=0.036408 std=0.191022 min=0.000009 max=0.699061 | val (scaled) MSE: mean=0.030487 med=0.020486 std=0.025538 min=0.008019 max=0.072956
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 056 | train (price) MSE=0.000738 MAE=0.020072 RMSE=0.027169 | val (price) MSE=0.000202 MAE=0.013062 RMSE=0.014222
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000202 at epoch 56; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch056.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 057 | train (scaled) MSE: mean=0.110767 med=0.036225 std=0.190661 min=0.000011 max=0.697443 | val (scaled) MSE: mean=0.030318 med=0.020551 std=0.025362 min=0.007822 max=0.072350
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 057 | train (price) MSE=0.000735 MAE=0.019988 RMSE=0.027108 | val (price) MSE=0.000201 MAE=0.013018 RMSE=0.014182
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000201 at epoch 57; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch057.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 058 | train (scaled) MSE: mean=0.110138 med=0.035948 std=0.189865 min=0.000024 max=0.694461 | val (scaled) MSE: mean=0.030171 med=0.020609 std=0.025209 min=0.007650 max=0.071814
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 058 | train (price) MSE=0.000731 MAE=0.019918 RMSE=0.027031 | val (price) MSE=0.000200 MAE=0.012978 RMSE=0.014148
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000200 at epoch 58; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch058.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 059 | train (scaled) MSE: mean=0.109662 med=0.036171 std=0.189399 min=0.000050 max=0.692947 | val (scaled) MSE: mean=0.029994 med=0.020681 std=0.025029 min=0.007444 max=0.071169
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 059 | train (price) MSE=0.000728 MAE=0.019864 RMSE=0.026972 | val (price) MSE=0.000199 MAE=0.012930 RMSE=0.014106
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000199 at epoch 59; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch059.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 060 | train (scaled) MSE: mean=0.108976 med=0.035976 std=0.188732 min=0.000066 max=0.690608 | val (scaled) MSE: mean=0.029855 med=0.020746 std=0.024884 min=0.007279 max=0.070646
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 060 | train (price) MSE=0.000723 MAE=0.019786 RMSE=0.026888 | val (price) MSE=0.000198 MAE=0.012892 RMSE=0.014073
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000198 at epoch 60; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch060.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 061 | train (scaled) MSE: mean=0.108484 med=0.035693 std=0.188214 min=0.000100 max=0.688596 | val (scaled) MSE: mean=0.029674 med=0.020828 std=0.024704 min=0.007067 max=0.069973
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 061 | train (price) MSE=0.000720 MAE=0.019716 RMSE=0.026827 | val (price) MSE=0.000197 MAE=0.012841 RMSE=0.014031
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000197 at epoch 61; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch061.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 062 | train (scaled) MSE: mean=0.107827 med=0.035548 std=0.187948 min=0.000124 max=0.687944 | val (scaled) MSE: mean=0.029514 med=0.020901 std=0.024548 min=0.006879 max=0.069375
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 062 | train (price) MSE=0.000715 MAE=0.019631 RMSE=0.026746 | val (price) MSE=0.000196 MAE=0.012796 RMSE=0.013993
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000196 at epoch 62; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch062.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 063 | train (scaled) MSE: mean=0.107235 med=0.035462 std=0.187101 min=0.000150 max=0.684902 | val (scaled) MSE: mean=0.029347 med=0.020979 std=0.024388 min=0.006682 max=0.068747
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 063 | train (price) MSE=0.000711 MAE=0.019563 RMSE=0.026672 | val (price) MSE=0.000195 MAE=0.012747 RMSE=0.013953
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000195 at epoch 63; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch063.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 064 | train (scaled) MSE: mean=0.106665 med=0.035267 std=0.186748 min=0.000193 max=0.683403 | val (scaled) MSE: mean=0.029177 med=0.021066 std=0.024225 min=0.006482 max=0.068092
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 064 | train (price) MSE=0.000708 MAE=0.019474 RMSE=0.026601 | val (price) MSE=0.000194 MAE=0.012697 RMSE=0.013913
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000194 at epoch 64; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch064.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 065 | train (scaled) MSE: mean=0.105994 med=0.034927 std=0.185999 min=0.000225 max=0.680724 | val (scaled) MSE: mean=0.029031 med=0.021144 std=0.024086 min=0.006310 max=0.067525
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 065 | train (price) MSE=0.000703 MAE=0.019394 RMSE=0.026518 | val (price) MSE=0.000193 MAE=0.012654 RMSE=0.013878
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000193 at epoch 65; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch065.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 066 | train (scaled) MSE: mean=0.105453 med=0.034978 std=0.185307 min=0.000216 max=0.678213 | val (scaled) MSE: mean=0.028862 med=0.021238 std=0.023930 min=0.006109 max=0.066863
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 066 | train (price) MSE=0.000700 MAE=0.019320 RMSE=0.026450 | val (price) MSE=0.000191 MAE=0.012602 RMSE=0.013837
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000191 at epoch 66; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch066.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 067 | train (scaled) MSE: mean=0.104803 med=0.034549 std=0.184782 min=0.000191 max=0.676366 | val (scaled) MSE: mean=0.028705 med=0.021330 std=0.023786 min=0.005924 max=0.066235
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 067 | train (price) MSE=0.000695 MAE=0.019238 RMSE=0.026368 | val (price) MSE=0.000190 MAE=0.012554 RMSE=0.013800
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000190 at epoch 67; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch067.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 068 | train (scaled) MSE: mean=0.104279 med=0.034594 std=0.184402 min=0.000152 max=0.674986 | val (scaled) MSE: mean=0.028531 med=0.021439 std=0.023630 min=0.005718 max=0.065526
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 068 | train (price) MSE=0.000692 MAE=0.019150 RMSE=0.026302 | val (price) MSE=0.000189 MAE=0.012498 RMSE=0.013758
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000189 at epoch 68; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch068.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 069 | train (scaled) MSE: mean=0.103580 med=0.034337 std=0.183697 min=0.000119 max=0.672640 | val (scaled) MSE: mean=0.028381 med=0.021536 std=0.023498 min=0.005542 max=0.064912
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 069 | train (price) MSE=0.000687 MAE=0.019062 RMSE=0.026214 | val (price) MSE=0.000188 MAE=0.012450 RMSE=0.013722
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000188 at epoch 69; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch069.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 070 | train (scaled) MSE: mean=0.103016 med=0.034159 std=0.183232 min=0.000096 max=0.670948 | val (scaled) MSE: mean=0.028216 med=0.021646 std=0.023358 min=0.005346 max=0.064226
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 070 | train (price) MSE=0.000683 MAE=0.018989 RMSE=0.026142 | val (price) MSE=0.000187 MAE=0.012396 RMSE=0.013682
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000187 at epoch 70; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch070.pt
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 071 | train (scaled) MSE: mean=0.102363 med=0.034238 std=0.182634 min=0.000072 max=0.669213 | val (scaled) MSE: mean=0.028064 med=0.021756 std=0.023229 min=0.005166 max=0.063576
+2025-08-28T18:18:41Z - INFO - [train_model] Epoch 071 | train (price) MSE=0.000679 MAE=0.018901 RMSE=0.026059 | val (price) MSE=0.000186 MAE=0.012345 RMSE=0.013645
+2025-08-28T18:18:41Z - INFO - [train_model] New best (price) val MSE=0.000186 at epoch 71; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch071.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 072 | train (scaled) MSE: mean=0.101722 med=0.033966 std=0.181740 min=0.000069 max=0.665520 | val (scaled) MSE: mean=0.027920 med=0.021869 std=0.023111 min=0.004993 max=0.062948
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 072 | train (price) MSE=0.000675 MAE=0.018814 RMSE=0.025978 | val (price) MSE=0.000185 MAE=0.012296 RMSE=0.013610
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000185 at epoch 72; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch072.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 073 | train (scaled) MSE: mean=0.101104 med=0.033868 std=0.181104 min=0.000040 max=0.663338 | val (scaled) MSE: mean=0.027773 med=0.021988 std=0.022993 min=0.004817 max=0.062300
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 073 | train (price) MSE=0.000671 MAE=0.018730 RMSE=0.025899 | val (price) MSE=0.000184 MAE=0.012244 RMSE=0.013574
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000184 at epoch 73; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch073.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 074 | train (scaled) MSE: mean=0.100452 med=0.033830 std=0.180651 min=0.000027 max=0.661958 | val (scaled) MSE: mean=0.027634 med=0.022107 std=0.022886 min=0.004649 max=0.061674
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 074 | train (price) MSE=0.000666 MAE=0.018639 RMSE=0.025815 | val (price) MSE=0.000183 MAE=0.012195 RMSE=0.013540
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000183 at epoch 74; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch074.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 075 | train (scaled) MSE: mean=0.099876 med=0.033507 std=0.180171 min=0.000020 max=0.660271 | val (scaled) MSE: mean=0.027484 med=0.022244 std=0.022774 min=0.004465 max=0.060982
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 075 | train (price) MSE=0.000663 MAE=0.018550 RMSE=0.025741 | val (price) MSE=0.000182 MAE=0.012140 RMSE=0.013503
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000182 at epoch 75; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch075.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 076 | train (scaled) MSE: mean=0.099298 med=0.033483 std=0.179286 min=0.000004 max=0.656973 | val (scaled) MSE: mean=0.027321 med=0.022401 std=0.022660 min=0.004266 max=0.060217
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 076 | train (price) MSE=0.000659 MAE=0.018477 RMSE=0.025666 | val (price) MSE=0.000181 MAE=0.012078 RMSE=0.013463
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000181 at epoch 76; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch076.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 077 | train (scaled) MSE: mean=0.098530 med=0.033134 std=0.178747 min=0.000002 max=0.655007 | val (scaled) MSE: mean=0.027195 med=0.022528 std=0.022575 min=0.004112 max=0.059612
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 077 | train (price) MSE=0.000654 MAE=0.018360 RMSE=0.025567 | val (price) MSE=0.000180 MAE=0.012030 RMSE=0.013432
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000180 at epoch 77; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch077.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 078 | train (scaled) MSE: mean=0.097891 med=0.033451 std=0.177889 min=0.000000 max=0.652240 | val (scaled) MSE: mean=0.027072 med=0.022658 std=0.022498 min=0.003960 max=0.059012
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 078 | train (price) MSE=0.000649 MAE=0.018285 RMSE=0.025484 | val (price) MSE=0.000180 MAE=0.011981 RMSE=0.013401
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000180 at epoch 78; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch078.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 079 | train (scaled) MSE: mean=0.097360 med=0.033174 std=0.177371 min=0.000003 max=0.650133 | val (scaled) MSE: mean=0.026920 med=0.022826 std=0.022408 min=0.003773 max=0.058254
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 079 | train (price) MSE=0.000646 MAE=0.018225 RMSE=0.025415 | val (price) MSE=0.000179 MAE=0.011919 RMSE=0.013364
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000179 at epoch 79; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch079.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 080 | train (scaled) MSE: mean=0.096652 med=0.032605 std=0.176794 min=0.000006 max=0.648091 | val (scaled) MSE: mean=0.026787 med=0.022986 std=0.022335 min=0.003607 max=0.057569
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 080 | train (price) MSE=0.000641 MAE=0.018117 RMSE=0.025322 | val (price) MSE=0.000178 MAE=0.011864 RMSE=0.013331
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000178 at epoch 80; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch080.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 081 | train (scaled) MSE: mean=0.096036 med=0.031936 std=0.176039 min=0.000019 max=0.645689 | val (scaled) MSE: mean=0.026645 med=0.023163 std=0.022267 min=0.003427 max=0.056827
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 081 | train (price) MSE=0.000637 MAE=0.018050 RMSE=0.025241 | val (price) MSE=0.000177 MAE=0.011802 RMSE=0.013295
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000177 at epoch 81; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch081.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 082 | train (scaled) MSE: mean=0.095337 med=0.031027 std=0.175563 min=0.000032 max=0.644090 | val (scaled) MSE: mean=0.026520 med=0.023329 std=0.022213 min=0.003269 max=0.056153
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 082 | train (price) MSE=0.000632 MAE=0.017962 RMSE=0.025149 | val (price) MSE=0.000176 MAE=0.011747 RMSE=0.013264
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000176 at epoch 82; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch082.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 083 | train (scaled) MSE: mean=0.094685 med=0.030065 std=0.174766 min=0.000047 max=0.640850 | val (scaled) MSE: mean=0.026397 med=0.023500 std=0.022168 min=0.003112 max=0.055478
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 083 | train (price) MSE=0.000628 MAE=0.017887 RMSE=0.025063 | val (price) MSE=0.000175 MAE=0.011690 RMSE=0.013233
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000175 at epoch 83; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch083.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 084 | train (scaled) MSE: mean=0.094045 med=0.029528 std=0.174072 min=0.000057 max=0.638528 | val (scaled) MSE: mean=0.026275 med=0.023680 std=0.022131 min=0.002954 max=0.054784
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 084 | train (price) MSE=0.000624 MAE=0.017805 RMSE=0.024978 | val (price) MSE=0.000174 MAE=0.011632 RMSE=0.013203
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000174 at epoch 84; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch084.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 085 | train (scaled) MSE: mean=0.093399 med=0.028786 std=0.173302 min=0.000034 max=0.635567 | val (scaled) MSE: mean=0.026154 med=0.023868 std=0.022103 min=0.002797 max=0.054084
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 085 | train (price) MSE=0.000620 MAE=0.017723 RMSE=0.024892 | val (price) MSE=0.000174 MAE=0.011573 RMSE=0.013172
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000174 at epoch 85; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch085.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 086 | train (scaled) MSE: mean=0.092756 med=0.027955 std=0.172898 min=0.000009 max=0.634448 | val (scaled) MSE: mean=0.026033 med=0.024071 std=0.022085 min=0.002638 max=0.053351
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 086 | train (price) MSE=0.000615 MAE=0.017624 RMSE=0.024806 | val (price) MSE=0.000173 MAE=0.011511 RMSE=0.013142
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000173 at epoch 86; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch086.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 087 | train (scaled) MSE: mean=0.092067 med=0.027448 std=0.172037 min=0.000003 max=0.631700 | val (scaled) MSE: mean=0.025913 med=0.024278 std=0.022079 min=0.002480 max=0.052618
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 087 | train (price) MSE=0.000611 MAE=0.017552 RMSE=0.024714 | val (price) MSE=0.000172 MAE=0.011447 RMSE=0.013112
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000172 at epoch 87; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch087.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 088 | train (scaled) MSE: mean=0.091287 med=0.026630 std=0.170975 min=0.000000 max=0.627723 | val (scaled) MSE: mean=0.025827 med=0.024443 std=0.022080 min=0.002364 max=0.052059
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 088 | train (price) MSE=0.000606 MAE=0.017463 RMSE=0.024609 | val (price) MSE=0.000171 MAE=0.011399 RMSE=0.013090
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000171 at epoch 88; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch088.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 089 | train (scaled) MSE: mean=0.090741 med=0.026057 std=0.170359 min=0.000002 max=0.625642 | val (scaled) MSE: mean=0.025705 med=0.024686 std=0.022096 min=0.002198 max=0.051247
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 089 | train (price) MSE=0.000602 MAE=0.017417 RMSE=0.024535 | val (price) MSE=0.000171 MAE=0.011328 RMSE=0.013059
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000171 at epoch 89; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch089.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 090 | train (scaled) MSE: mean=0.090026 med=0.024751 std=0.169921 min=0.000015 max=0.624151 | val (scaled) MSE: mean=0.025592 med=0.024930 std=0.022124 min=0.002044 max=0.050465
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 090 | train (price) MSE=0.000597 MAE=0.017344 RMSE=0.024439 | val (price) MSE=0.000170 MAE=0.011260 RMSE=0.013030
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000170 at epoch 90; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch090.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 091 | train (scaled) MSE: mean=0.089238 med=0.023991 std=0.169034 min=0.000052 max=0.620921 | val (scaled) MSE: mean=0.025503 med=0.025139 std=0.022159 min=0.001918 max=0.049814
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 091 | train (price) MSE=0.000592 MAE=0.017266 RMSE=0.024331 | val (price) MSE=0.000169 MAE=0.011203 RMSE=0.013007
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000169 at epoch 91; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch091.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 092 | train (scaled) MSE: mean=0.088559 med=0.023389 std=0.168352 min=0.000064 max=0.618763 | val (scaled) MSE: mean=0.025397 med=0.025398 std=0.022203 min=0.001778 max=0.049014
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 092 | train (price) MSE=0.000588 MAE=0.017192 RMSE=0.024239 | val (price) MSE=0.000168 MAE=0.011135 RMSE=0.012980
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000168 at epoch 92; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch092.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 093 | train (scaled) MSE: mean=0.087755 med=0.022740 std=0.167164 min=0.000127 max=0.614419 | val (scaled) MSE: mean=0.025304 med=0.025647 std=0.022267 min=0.001643 max=0.048279
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 093 | train (price) MSE=0.000582 MAE=0.017131 RMSE=0.024128 | val (price) MSE=0.000168 MAE=0.011069 RMSE=0.012957
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000168 at epoch 93; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch093.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 094 | train (scaled) MSE: mean=0.087160 med=0.021865 std=0.166294 min=0.000156 max=0.610933 | val (scaled) MSE: mean=0.025195 med=0.025790 std=0.022365 min=0.001482 max=0.047717
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 094 | train (price) MSE=0.000578 MAE=0.017066 RMSE=0.024047 | val (price) MSE=0.000167 MAE=0.010986 RMSE=0.012928
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000167 at epoch 94; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch094.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 095 | train (scaled) MSE: mean=0.086341 med=0.021135 std=0.165753 min=0.000277 max=0.609655 | val (scaled) MSE: mean=0.025107 med=0.025277 std=0.022467 min=0.001348 max=0.048524
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 095 | train (price) MSE=0.000573 MAE=0.016994 RMSE=0.023933 | val (price) MSE=0.000167 MAE=0.010914 RMSE=0.012906
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000167 at epoch 95; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch095.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 096 | train (scaled) MSE: mean=0.085767 med=0.020095 std=0.164999 min=0.000340 max=0.606680 | val (scaled) MSE: mean=0.025013 med=0.024695 std=0.022601 min=0.001201 max=0.049460
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 096 | train (price) MSE=0.000569 MAE=0.016930 RMSE=0.023854 | val (price) MSE=0.000166 MAE=0.010830 RMSE=0.012882
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000166 at epoch 96; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch096.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 097 | train (scaled) MSE: mean=0.084831 med=0.019560 std=0.163841 min=0.000388 max=0.602793 | val (scaled) MSE: mean=0.024952 med=0.024289 std=0.022707 min=0.001103 max=0.050127
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 097 | train (price) MSE=0.000563 MAE=0.016828 RMSE=0.023723 | val (price) MSE=0.000166 MAE=0.010771 RMSE=0.012866
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000166 at epoch 97; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch097.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 098 | train (scaled) MSE: mean=0.084230 med=0.018701 std=0.163093 min=0.000465 max=0.600083 | val (scaled) MSE: mean=0.024883 med=0.023791 std=0.022853 min=0.000987 max=0.050963
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 098 | train (price) MSE=0.000559 MAE=0.016779 RMSE=0.023639 | val (price) MSE=0.000165 MAE=0.010698 RMSE=0.012848
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000165 at epoch 98; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch098.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 099 | train (scaled) MSE: mean=0.083578 med=0.017768 std=0.162420 min=0.000582 max=0.597659 | val (scaled) MSE: mean=0.024816 med=0.023269 std=0.023022 min=0.000870 max=0.051857
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 099 | train (price) MSE=0.000554 MAE=0.016690 RMSE=0.023547 | val (price) MSE=0.000165 MAE=0.010620 RMSE=0.012831
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000165 at epoch 99; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch099.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 100 | train (scaled) MSE: mean=0.082883 med=0.017366 std=0.161686 min=0.000783 max=0.595257 | val (scaled) MSE: mean=0.024758 med=0.022771 std=0.023198 min=0.000766 max=0.052723
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 100 | train (price) MSE=0.000550 MAE=0.016632 RMSE=0.023449 | val (price) MSE=0.000164 MAE=0.010545 RMSE=0.012816
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000164 at epoch 100; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch100.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 101 | train (scaled) MSE: mean=0.082163 med=0.016580 std=0.160467 min=0.000849 max=0.590604 | val (scaled) MSE: mean=0.024712 med=0.022322 std=0.023374 min=0.000674 max=0.053530
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 101 | train (price) MSE=0.000545 MAE=0.016542 RMSE=0.023347 | val (price) MSE=0.000164 MAE=0.010476 RMSE=0.012804
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000164 at epoch 101; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch101.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 102 | train (scaled) MSE: mean=0.081571 med=0.015765 std=0.160007 min=0.001066 max=0.589451 | val (scaled) MSE: mean=0.024666 med=0.021820 std=0.023587 min=0.000578 max=0.054447
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 102 | train (price) MSE=0.000541 MAE=0.016484 RMSE=0.023263 | val (price) MSE=0.000164 MAE=0.010398 RMSE=0.012792
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000164 at epoch 102; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch102.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 103 | train (scaled) MSE: mean=0.080975 med=0.014849 std=0.159062 min=0.001226 max=0.585848 | val (scaled) MSE: mean=0.024627 med=0.021301 std=0.023827 min=0.000484 max=0.055421
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 103 | train (price) MSE=0.000537 MAE=0.016421 RMSE=0.023178 | val (price) MSE=0.000163 MAE=0.010316 RMSE=0.012782
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 103; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch103.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 104 | train (scaled) MSE: mean=0.080212 med=0.014432 std=0.158010 min=0.001346 max=0.581995 | val (scaled) MSE: mean=0.024599 med=0.020857 std=0.024047 min=0.000410 max=0.056273
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 104 | train (price) MSE=0.000532 MAE=0.016320 RMSE=0.023068 | val (price) MSE=0.000163 MAE=0.010244 RMSE=0.012775
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 104; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch104.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 105 | train (scaled) MSE: mean=0.079568 med=0.013825 std=0.157216 min=0.001561 max=0.579433 | val (scaled) MSE: mean=0.024579 med=0.020457 std=0.024257 min=0.000349 max=0.057055
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 105 | train (price) MSE=0.000528 MAE=0.016268 RMSE=0.022975 | val (price) MSE=0.000163 MAE=0.010180 RMSE=0.012770
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 105; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch105.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 106 | train (scaled) MSE: mean=0.078932 med=0.013095 std=0.156433 min=0.001605 max=0.576640 | val (scaled) MSE: mean=0.024565 med=0.020059 std=0.024479 min=0.000291 max=0.057852
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 106 | train (price) MSE=0.000524 MAE=0.016168 RMSE=0.022883 | val (price) MSE=0.000163 MAE=0.010115 RMSE=0.012766
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 106; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch106.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 107 | train (scaled) MSE: mean=0.078407 med=0.012645 std=0.155294 min=0.001925 max=0.572377 | val (scaled) MSE: mean=0.024555 med=0.019593 std=0.024755 min=0.000230 max=0.058805
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 107 | train (price) MSE=0.000520 MAE=0.016140 RMSE=0.022807 | val (price) MSE=0.000163 MAE=0.010037 RMSE=0.012763
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 107; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch107.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 108 | train (scaled) MSE: mean=0.077915 med=0.012241 std=0.154775 min=0.001584 max=0.570638 | val (scaled) MSE: mean=0.024553 med=0.019083 std=0.025077 min=0.000170 max=0.059874
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 108 | train (price) MSE=0.000517 MAE=0.016056 RMSE=0.022735 | val (price) MSE=0.000163 MAE=0.009950 RMSE=0.012763
+2025-08-28T18:18:42Z - INFO - [train_model] New best (price) val MSE=0.000163 at epoch 108; saved → /home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch108.pt
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 109 | train (scaled) MSE: mean=0.077135 med=0.011949 std=0.153711 min=0.001469 max=0.567013 | val (scaled) MSE: mean=0.024556 med=0.018748 std=0.025300 min=0.000135 max=0.060595
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 109 | train (price) MSE=0.000512 MAE=0.015970 RMSE=0.022621 | val (price) MSE=0.000163 MAE=0.009893 RMSE=0.012764
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 110 | train (scaled) MSE: mean=0.076663 med=0.012024 std=0.153319 min=0.001226 max=0.565675 | val (scaled) MSE: mean=0.024570 med=0.018300 std=0.025615 min=0.000094 max=0.061584
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 110 | train (price) MSE=0.000509 MAE=0.015884 RMSE=0.022552 | val (price) MSE=0.000163 MAE=0.009814 RMSE=0.012767
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 111 | train (scaled) MSE: mean=0.076038 med=0.011949 std=0.152008 min=0.001160 max=0.560846 | val (scaled) MSE: mean=0.024584 med=0.017931 std=0.025884 min=0.000065 max=0.062409
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 111 | train (price) MSE=0.000504 MAE=0.015838 RMSE=0.022460 | val (price) MSE=0.000163 MAE=0.009749 RMSE=0.012771
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 112 | train (scaled) MSE: mean=0.075463 med=0.011869 std=0.151284 min=0.000944 max=0.558433 | val (scaled) MSE: mean=0.024606 med=0.017577 std=0.026158 min=0.000042 max=0.063227
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 112 | train (price) MSE=0.000501 MAE=0.015743 RMSE=0.022375 | val (price) MSE=0.000163 MAE=0.009685 RMSE=0.012776
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 113 | train (scaled) MSE: mean=0.074936 med=0.011873 std=0.150476 min=0.000827 max=0.555591 | val (scaled) MSE: mean=0.024632 med=0.017219 std=0.026443 min=0.000024 max=0.064065
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 113 | train (price) MSE=0.000497 MAE=0.015677 RMSE=0.022297 | val (price) MSE=0.000163 MAE=0.009619 RMSE=0.012783
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 114 | train (scaled) MSE: mean=0.074587 med=0.011919 std=0.150378 min=0.000641 max=0.555292 | val (scaled) MSE: mean=0.024676 med=0.016733 std=0.026849 min=0.000007 max=0.065231
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 114 | train (price) MSE=0.000495 MAE=0.015608 RMSE=0.022245 | val (price) MSE=0.000164 MAE=0.009529 RMSE=0.012795
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 115 | train (scaled) MSE: mean=0.073935 med=0.011884 std=0.149000 min=0.000633 max=0.550348 | val (scaled) MSE: mean=0.024719 med=0.016361 std=0.027176 min=0.000001 max=0.066153
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 115 | train (price) MSE=0.000490 MAE=0.015541 RMSE=0.022147 | val (price) MSE=0.000164 MAE=0.009458 RMSE=0.012806
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 116 | train (scaled) MSE: mean=0.073405 med=0.011703 std=0.148275 min=0.000446 max=0.547774 | val (scaled) MSE: mean=0.024762 med=0.016019 std=0.027486 min=0.000000 max=0.067012
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 116 | train (price) MSE=0.000487 MAE=0.015447 RMSE=0.022068 | val (price) MSE=0.000164 MAE=0.009420 RMSE=0.012817
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 117 | train (scaled) MSE: mean=0.072919 med=0.011861 std=0.147642 min=0.000431 max=0.545774 | val (scaled) MSE: mean=0.024811 med=0.015690 std=0.027796 min=0.000005 max=0.067859
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 117 | train (price) MSE=0.000484 MAE=0.015395 RMSE=0.021994 | val (price) MSE=0.000165 MAE=0.009420 RMSE=0.012830
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 118 | train (scaled) MSE: mean=0.072531 med=0.011933 std=0.146749 min=0.000350 max=0.542461 | val (scaled) MSE: mean=0.024880 med=0.015296 std=0.028188 min=0.000018 max=0.068911
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 118 | train (price) MSE=0.000481 MAE=0.015344 RMSE=0.021936 | val (price) MSE=0.000165 MAE=0.009420 RMSE=0.012848
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 119 | train (scaled) MSE: mean=0.071939 med=0.011927 std=0.146124 min=0.000263 max=0.540419 | val (scaled) MSE: mean=0.024929 med=0.015027 std=0.028458 min=0.000031 max=0.069630
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 119 | train (price) MSE=0.000477 MAE=0.015241 RMSE=0.021846 | val (price) MSE=0.000165 MAE=0.009420 RMSE=0.012860
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 120 | train (scaled) MSE: mean=0.071603 med=0.011831 std=0.145562 min=0.000208 max=0.538483 | val (scaled) MSE: mean=0.025006 med=0.014660 std=0.028846 min=0.000055 max=0.070650
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 120 | train (price) MSE=0.000475 MAE=0.015196 RMSE=0.021795 | val (price) MSE=0.000166 MAE=0.009420 RMSE=0.012880
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 121 | train (scaled) MSE: mean=0.071157 med=0.012147 std=0.144491 min=0.000113 max=0.534507 | val (scaled) MSE: mean=0.025084 med=0.014326 std=0.029212 min=0.000083 max=0.071602
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 121 | train (price) MSE=0.000472 MAE=0.015131 RMSE=0.021727 | val (price) MSE=0.000166 MAE=0.009420 RMSE=0.012900
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 122 | train (scaled) MSE: mean=0.070769 med=0.012089 std=0.143903 min=0.000082 max=0.532619 | val (scaled) MSE: mean=0.025176 med=0.013977 std=0.029612 min=0.000120 max=0.072629
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 122 | train (price) MSE=0.000469 MAE=0.015068 RMSE=0.021668 | val (price) MSE=0.000167 MAE=0.009420 RMSE=0.012924
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 123 | train (scaled) MSE: mean=0.070242 med=0.012003 std=0.143126 min=0.000041 max=0.529859 | val (scaled) MSE: mean=0.025250 med=0.013713 std=0.029922 min=0.000153 max=0.073420
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 123 | train (price) MSE=0.000466 MAE=0.014972 RMSE=0.021587 | val (price) MSE=0.000168 MAE=0.009421 RMSE=0.012943
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 124 | train (scaled) MSE: mean=0.069857 med=0.012161 std=0.142486 min=0.000013 max=0.527597 | val (scaled) MSE: mean=0.025324 med=0.013471 std=0.030224 min=0.000168 max=0.074183
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 124 | train (price) MSE=0.000463 MAE=0.014903 RMSE=0.021528 | val (price) MSE=0.000168 MAE=0.009420 RMSE=0.012961
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 125 | train (scaled) MSE: mean=0.069570 med=0.012794 std=0.141863 min=0.000008 max=0.525275 | val (scaled) MSE: mean=0.025426 med=0.013199 std=0.030620 min=0.000126 max=0.075180
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 125 | train (price) MSE=0.000462 MAE=0.014850 RMSE=0.021483 | val (price) MSE=0.000169 MAE=0.009420 RMSE=0.012988
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 126 | train (scaled) MSE: mean=0.069106 med=0.013150 std=0.140786 min=0.000001 max=0.521493 | val (scaled) MSE: mean=0.025517 med=0.012977 std=0.030956 min=0.000095 max=0.076018
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 126 | train (price) MSE=0.000458 MAE=0.014789 RMSE=0.021412 | val (price) MSE=0.000169 MAE=0.009421 RMSE=0.013011
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 127 | train (scaled) MSE: mean=0.068698 med=0.013517 std=0.140114 min=0.000002 max=0.519077 | val (scaled) MSE: mean=0.025589 med=0.012809 std=0.031217 min=0.000074 max=0.076665
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 127 | train (price) MSE=0.000456 MAE=0.014731 RMSE=0.021348 | val (price) MSE=0.000170 MAE=0.009420 RMSE=0.013029
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 128 | train (scaled) MSE: mean=0.068395 med=0.013884 std=0.139605 min=0.000012 max=0.517389 | val (scaled) MSE: mean=0.025673 med=0.012627 std=0.031507 min=0.000054 max=0.077383
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 128 | train (price) MSE=0.000454 MAE=0.014714 RMSE=0.021301 | val (price) MSE=0.000170 MAE=0.009420 RMSE=0.013051
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 129 | train (scaled) MSE: mean=0.068177 med=0.014500 std=0.139340 min=0.000023 max=0.516588 | val (scaled) MSE: mean=0.025815 med=0.012346 std=0.031978 min=0.000029 max=0.078540
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 129 | train (price) MSE=0.000452 MAE=0.014688 RMSE=0.021267 | val (price) MSE=0.000171 MAE=0.009421 RMSE=0.013087
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 130 | train (scaled) MSE: mean=0.067718 med=0.014889 std=0.138402 min=0.000056 max=0.513228 | val (scaled) MSE: mean=0.025916 med=0.012158 std=0.032303 min=0.000016 max=0.079334
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 130 | train (price) MSE=0.000449 MAE=0.014637 RMSE=0.021196 | val (price) MSE=0.000172 MAE=0.009421 RMSE=0.013112
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 131 | train (scaled) MSE: mean=0.067483 med=0.015539 std=0.137695 min=0.000097 max=0.510642 | val (scaled) MSE: mean=0.026043 med=0.011933 std=0.032701 min=0.000006 max=0.080302
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 131 | train (price) MSE=0.000448 MAE=0.014606 RMSE=0.021159 | val (price) MSE=0.000173 MAE=0.009421 RMSE=0.013144
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 132 | train (scaled) MSE: mean=0.067090 med=0.015752 std=0.136969 min=0.000127 max=0.507983 | val (scaled) MSE: mean=0.026145 med=0.011761 std=0.033013 min=0.000001 max=0.081059
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 132 | train (price) MSE=0.000445 MAE=0.014559 RMSE=0.021097 | val (price) MSE=0.000173 MAE=0.009421 RMSE=0.013170
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 133 | train (scaled) MSE: mean=0.066788 med=0.016277 std=0.136367 min=0.000172 max=0.505886 | val (scaled) MSE: mean=0.026237 med=0.011614 std=0.033286 min=0.000000 max=0.081719
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 133 | train (price) MSE=0.000443 MAE=0.014531 RMSE=0.021050 | val (price) MSE=0.000174 MAE=0.009422 RMSE=0.013193
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 134 | train (scaled) MSE: mean=0.066577 med=0.016862 std=0.135848 min=0.000201 max=0.504027 | val (scaled) MSE: mean=0.026378 med=0.011402 std=0.033695 min=0.000003 max=0.082704
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 134 | train (price) MSE=0.000442 MAE=0.014498 RMSE=0.021016 | val (price) MSE=0.000175 MAE=0.009489 RMSE=0.013229
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 135 | train (scaled) MSE: mean=0.066243 med=0.017015 std=0.135369 min=0.000304 max=0.502516 | val (scaled) MSE: mean=0.026485 med=0.011251 std=0.033996 min=0.000008 max=0.083429
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 135 | train (price) MSE=0.000439 MAE=0.014465 RMSE=0.020964 | val (price) MSE=0.000176 MAE=0.009538 RMSE=0.013255
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 136 | train (scaled) MSE: mean=0.066086 med=0.016982 std=0.134435 min=0.000346 max=0.499058 | val (scaled) MSE: mean=0.026644 med=0.011039 std=0.034433 min=0.000022 max=0.084477
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 136 | train (price) MSE=0.000438 MAE=0.014458 RMSE=0.020939 | val (price) MSE=0.000177 MAE=0.009609 RMSE=0.013295
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 137 | train (scaled) MSE: mean=0.065699 med=0.016741 std=0.133873 min=0.000417 max=0.497090 | val (scaled) MSE: mean=0.026725 med=0.010937 std=0.034650 min=0.000030 max=0.084995
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 137 | train (price) MSE=0.000436 MAE=0.014397 RMSE=0.020877 | val (price) MSE=0.000177 MAE=0.009644 RMSE=0.013315
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 138 | train (scaled) MSE: mean=0.065519 med=0.016667 std=0.133732 min=0.000336 max=0.496632 | val (scaled) MSE: mean=0.026862 med=0.010773 std=0.035008 min=0.000048 max=0.085852
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 138 | train (price) MSE=0.000435 MAE=0.014357 RMSE=0.020849 | val (price) MSE=0.000178 MAE=0.009701 RMSE=0.013349
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 139 | train (scaled) MSE: mean=0.065277 med=0.016569 std=0.132807 min=0.000277 max=0.493338 | val (scaled) MSE: mean=0.026993 med=0.010624 std=0.035346 min=0.000068 max=0.086657
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 139 | train (price) MSE=0.000433 MAE=0.014343 RMSE=0.020810 | val (price) MSE=0.000179 MAE=0.009755 RMSE=0.013382
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 140 | train (scaled) MSE: mean=0.065033 med=0.016481 std=0.132406 min=0.000238 max=0.491913 | val (scaled) MSE: mean=0.027057 med=0.010552 std=0.035510 min=0.000078 max=0.087046
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 140 | train (price) MSE=0.000431 MAE=0.014308 RMSE=0.020771 | val (price) MSE=0.000180 MAE=0.009781 RMSE=0.013398
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 141 | train (scaled) MSE: mean=0.064870 med=0.016496 std=0.132049 min=0.000212 max=0.490649 | val (scaled) MSE: mean=0.027213 med=0.010388 std=0.035898 min=0.000107 max=0.087969
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 141 | train (price) MSE=0.000430 MAE=0.014289 RMSE=0.020745 | val (price) MSE=0.000181 MAE=0.009842 RMSE=0.013436
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 142 | train (scaled) MSE: mean=0.064632 med=0.016417 std=0.131403 min=0.000130 max=0.488351 | val (scaled) MSE: mean=0.027353 med=0.010249 std=0.036238 min=0.000136 max=0.088777
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 142 | train (price) MSE=0.000429 MAE=0.014242 RMSE=0.020707 | val (price) MSE=0.000181 MAE=0.009895 RMSE=0.013471
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 143 | train (scaled) MSE: mean=0.064433 med=0.016429 std=0.130933 min=0.000090 max=0.486703 | val (scaled) MSE: mean=0.027451 med=0.010155 std=0.036473 min=0.000158 max=0.089336
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 143 | train (price) MSE=0.000427 MAE=0.014222 RMSE=0.020675 | val (price) MSE=0.000182 MAE=0.009932 RMSE=0.013495
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 144 | train (scaled) MSE: mean=0.064400 med=0.016330 std=0.130588 min=0.000065 max=0.485515 | val (scaled) MSE: mean=0.027664 med=0.009962 std=0.036974 min=0.000209 max=0.090522
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 144 | train (price) MSE=0.000427 MAE=0.014220 RMSE=0.020670 | val (price) MSE=0.000184 MAE=0.010009 RMSE=0.013547
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 145 | train (scaled) MSE: mean=0.064069 med=0.016211 std=0.129821 min=0.000012 max=0.482702 | val (scaled) MSE: mean=0.027804 med=0.009843 std=0.037295 min=0.000246 max=0.091283
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 145 | train (price) MSE=0.000425 MAE=0.014151 RMSE=0.020617 | val (price) MSE=0.000184 MAE=0.010059 RMSE=0.013581
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 146 | train (scaled) MSE: mean=0.063847 med=0.016219 std=0.129300 min=0.000007 max=0.480893 | val (scaled) MSE: mean=0.027873 med=0.009786 std=0.037453 min=0.000265 max=0.091657
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 146 | train (price) MSE=0.000424 MAE=0.014130 RMSE=0.020581 | val (price) MSE=0.000185 MAE=0.010083 RMSE=0.013598
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 147 | train (scaled) MSE: mean=0.063706 med=0.016233 std=0.128898 min=0.000001 max=0.479432 | val (scaled) MSE: mean=0.027962 med=0.009715 std=0.037652 min=0.000289 max=0.092128
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 147 | train (price) MSE=0.000423 MAE=0.014108 RMSE=0.020558 | val (price) MSE=0.000186 MAE=0.010113 RMSE=0.013620
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 148 | train (scaled) MSE: mean=0.063618 med=0.016327 std=0.128451 min=0.000000 max=0.477871 | val (scaled) MSE: mean=0.028160 med=0.009565 std=0.038089 min=0.000348 max=0.093164
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 148 | train (price) MSE=0.000422 MAE=0.014102 RMSE=0.020544 | val (price) MSE=0.000187 MAE=0.010180 RMSE=0.013668
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 149 | train (scaled) MSE: mean=0.063401 med=0.016269 std=0.128013 min=0.000009 max=0.476382 | val (scaled) MSE: mean=0.028292 med=0.009468 std=0.038377 min=0.000389 max=0.093844
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 149 | train (price) MSE=0.000421 MAE=0.014096 RMSE=0.020509 | val (price) MSE=0.000188 MAE=0.010223 RMSE=0.013700
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 150 | train (scaled) MSE: mean=0.063306 med=0.016090 std=0.127695 min=0.000014 max=0.475187 | val (scaled) MSE: mean=0.028457 med=0.009355 std=0.038729 min=0.000442 max=0.094678
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 150 | train (price) MSE=0.000420 MAE=0.014100 RMSE=0.020493 | val (price) MSE=0.000189 MAE=0.010277 RMSE=0.013740
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 151 | train (scaled) MSE: mean=0.063093 med=0.016127 std=0.127083 min=0.000005 max=0.472988 | val (scaled) MSE: mean=0.028545 med=0.009296 std=0.038915 min=0.000471 max=0.095118
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 151 | train (price) MSE=0.000419 MAE=0.014081 RMSE=0.020459 | val (price) MSE=0.000189 MAE=0.010304 RMSE=0.013761
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 152 | train (scaled) MSE: mean=0.063092 med=0.016252 std=0.126735 min=0.000004 max=0.471759 | val (scaled) MSE: mean=0.028729 med=0.009180 std=0.039297 min=0.000534 max=0.096022
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 152 | train (price) MSE=0.000419 MAE=0.014115 RMSE=0.020459 | val (price) MSE=0.000191 MAE=0.010362 RMSE=0.013805
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 153 | train (scaled) MSE: mean=0.062890 med=0.016053 std=0.126258 min=0.000000 max=0.470032 | val (scaled) MSE: mean=0.028872 med=0.009094 std=0.039589 min=0.000585 max=0.096712
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 153 | train (price) MSE=0.000417 MAE=0.014097 RMSE=0.020426 | val (price) MSE=0.000192 MAE=0.010405 RMSE=0.013840
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 154 | train (scaled) MSE: mean=0.062692 med=0.016144 std=0.125710 min=0.000000 max=0.468066 | val (scaled) MSE: mean=0.028916 med=0.009066 std=0.039682 min=0.000601 max=0.096931
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 154 | train (price) MSE=0.000416 MAE=0.014096 RMSE=0.020394 | val (price) MSE=0.000192 MAE=0.010419 RMSE=0.013850
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 155 | train (scaled) MSE: mean=0.062625 med=0.016150 std=0.125478 min=0.000002 max=0.467214 | val (scaled) MSE: mean=0.029016 med=0.009010 std=0.039882 min=0.000638 max=0.097406
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 155 | train (price) MSE=0.000415 MAE=0.014104 RMSE=0.020383 | val (price) MSE=0.000192 MAE=0.010449 RMSE=0.013874
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 156 | train (scaled) MSE: mean=0.062556 med=0.016118 std=0.125341 min=0.000006 max=0.466745 | val (scaled) MSE: mean=0.029183 med=0.008918 std=0.040216 min=0.000701 max=0.098195
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 156 | train (price) MSE=0.000415 MAE=0.014117 RMSE=0.020372 | val (price) MSE=0.000194 MAE=0.010498 RMSE=0.013914
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 157 | train (scaled) MSE: mean=0.062412 med=0.016038 std=0.124856 min=0.000009 max=0.465039 | val (scaled) MSE: mean=0.029294 med=0.008860 std=0.040435 min=0.000743 max=0.098714
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 157 | train (price) MSE=0.000414 MAE=0.014117 RMSE=0.020348 | val (price) MSE=0.000194 MAE=0.010530 RMSE=0.013941
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 158 | train (scaled) MSE: mean=0.062299 med=0.016198 std=0.124354 min=0.000015 max=0.463211 | val (scaled) MSE: mean=0.029389 med=0.008811 std=0.040620 min=0.000780 max=0.099152
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 158 | train (price) MSE=0.000413 MAE=0.014138 RMSE=0.020330 | val (price) MSE=0.000195 MAE=0.010558 RMSE=0.013963
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 159 | train (scaled) MSE: mean=0.062240 med=0.016028 std=0.124204 min=0.000024 max=0.462658 | val (scaled) MSE: mean=0.029483 med=0.008764 std=0.040803 min=0.000817 max=0.099586
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 159 | train (price) MSE=0.000413 MAE=0.014135 RMSE=0.020320 | val (price) MSE=0.000196 MAE=0.010584 RMSE=0.013985
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 160 | train (scaled) MSE: mean=0.062126 med=0.016211 std=0.123872 min=0.000036 max=0.461525 | val (scaled) MSE: mean=0.029607 med=0.008704 std=0.041041 min=0.000867 max=0.100150
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 160 | train (price) MSE=0.000412 MAE=0.014152 RMSE=0.020302 | val (price) MSE=0.000196 MAE=0.010619 RMSE=0.014015
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 161 | train (scaled) MSE: mean=0.062064 med=0.016200 std=0.123518 min=0.000039 max=0.460189 | val (scaled) MSE: mean=0.029713 med=0.008656 std=0.041243 min=0.000911 max=0.100628
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 161 | train (price) MSE=0.000412 MAE=0.014158 RMSE=0.020291 | val (price) MSE=0.000197 MAE=0.010649 RMSE=0.014040
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 162 | train (scaled) MSE: mean=0.062012 med=0.016457 std=0.123250 min=0.000062 max=0.459286 | val (scaled) MSE: mean=0.029849 med=0.008595 std=0.041501 min=0.000967 max=0.101239
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 162 | train (price) MSE=0.000411 MAE=0.014176 RMSE=0.020283 | val (price) MSE=0.000198 MAE=0.010686 RMSE=0.014072
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 163 | train (scaled) MSE: mean=0.061888 med=0.016635 std=0.122796 min=0.000066 max=0.457623 | val (scaled) MSE: mean=0.029975 med=0.008541 std=0.041737 min=0.001020 max=0.101799
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 163 | train (price) MSE=0.000411 MAE=0.014185 RMSE=0.020263 | val (price) MSE=0.000199 MAE=0.010721 RMSE=0.014102
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 164 | train (scaled) MSE: mean=0.061801 med=0.016825 std=0.122520 min=0.000078 max=0.456624 | val (scaled) MSE: mean=0.030055 med=0.008508 std=0.041884 min=0.001054 max=0.102149
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 164 | train (price) MSE=0.000410 MAE=0.014186 RMSE=0.020248 | val (price) MSE=0.000199 MAE=0.010742 RMSE=0.014120
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 165 | train (scaled) MSE: mean=0.061766 med=0.017131 std=0.122326 min=0.000092 max=0.455929 | val (scaled) MSE: mean=0.030204 med=0.008448 std=0.042159 min=0.001119 max=0.102802
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 165 | train (price) MSE=0.000410 MAE=0.014200 RMSE=0.020243 | val (price) MSE=0.000200 MAE=0.010782 RMSE=0.014156
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 166 | train (scaled) MSE: mean=0.061722 med=0.017378 std=0.121824 min=0.000099 max=0.454132 | val (scaled) MSE: mean=0.030359 med=0.008389 std=0.042440 min=0.001187 max=0.103470
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 166 | train (price) MSE=0.000409 MAE=0.014242 RMSE=0.020235 | val (price) MSE=0.000201 MAE=0.010823 RMSE=0.014192
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 167 | train (scaled) MSE: mean=0.061590 med=0.017507 std=0.121591 min=0.000076 max=0.453261 | val (scaled) MSE: mean=0.030404 med=0.008372 std=0.042522 min=0.001206 max=0.103663
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 167 | train (price) MSE=0.000409 MAE=0.014223 RMSE=0.020214 | val (price) MSE=0.000202 MAE=0.010834 RMSE=0.014202
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 168 | train (scaled) MSE: mean=0.061536 med=0.017636 std=0.121380 min=0.000062 max=0.452495 | val (scaled) MSE: mean=0.030506 med=0.008335 std=0.042706 min=0.001252 max=0.104102
+2025-08-28T18:18:42Z - INFO - [train_model] Epoch 168 | train (price) MSE=0.000408 MAE=0.014230 RMSE=0.020205 | val (price) MSE=0.000202 MAE=0.010861 RMSE=0.014226
+2025-08-28T18:18:42Z - INFO - [train_model] Early stopping at epoch 168 (best price val MSE=0.000163 @ epoch 108)
+2025-08-28T18:18:43Z - INFO - [visualize_full_prediction] Saved full prediction plot for ['ACAM', 'BMY', 'EBAY', 'EWI', 'BABA', 'DAL', 'JNJ', 'NFLX', 'TSLA'] to output/20250828-141835/plots/all_tickers_finbert-tabmlp_full_returns_prediction.png
+2025-08-28T18:18:43Z - INFO - [visualize_sentiment] Saved sentiment plot for all_tickers to output/20250828-141835/plots/all_tickers_sentiment.png
+2025-08-28T18:18:43Z - INFO - [train] [all_tickers] Test (price) MSE=0.000114344 | MAE=0.008841237 | RMSE=0.010693162 (scaled MSE=0.017235626)
+2025-08-28T18:18:43Z - INFO - [train] [all_tickers] Final (price) Train MSE=0.000408237 | Val MSE=0.000202382 (scaled Train MSE=0.061535750 | Val MSE=0.030506084)
+2025-08-28T18:18:43Z - INFO - [train] [all_tickers] Best epoch=108 | Best (price) Train MSE=0.000516901 | Best (price) Val MSE=0.000162886 | Saved at=/home/tbfs/Projects/finBert/output/20250828-141835/saved_weights/all_tickers/all_tickers_best-epoch108.pt
+2025-08-28T18:18:43Z - INFO - [train] Wrote evaluation summary → output/20250828-141835/evaluation.json
