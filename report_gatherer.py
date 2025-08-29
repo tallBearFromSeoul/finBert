@@ -25,7 +25,7 @@ def parse_output_dir(stdout_):
 def generate_reports():
     all_tickers = True
     tickers = ["ACAM", "BMY", "EBAY", "EWI", "BABA", "DAL", "JNJ", "NFLX", "TSLA"]
-    models = ["lstm", "finbert-lstm", "lstm", "finbert-lstm",
+    models = ["lstm", "finbert-lstm",
               "gru", "finbert-gru", "transformer", "finbert-transformer",
               "rnn", "finbert-rnn", "tabmlp", "finbert-tabmlp"]
     model_map = {"gru": "GRU", "transformer": "Transformer", "finbert-transformer": "Transformer",

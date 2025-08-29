@@ -1,22 +1,22 @@
 {
     "RNN": {
-        "Vanilla": "report/rnn/20250828-142424/",
-        "Sentiment": "report/rnn/20250828-142510/"
+        "Vanilla": "report/rnn/20250828-174613/",
+        "Sentiment": "report/rnn/20250828-175127/"
     },
     "LSTM": {
-        "Vanilla": "report/lstm/20250828-142156/",
-        "Sentiment": "report/lstm/20250828-142213/"
+        "Vanilla": "report/lstm/20250828-171251/",
+        "Sentiment": "report/lstm/20250828-171808/"
     },
     "TabMLP": {
-        "Vanilla": "report/tabmlp/20250828-142533/",
-        "Sentiment": "report/tabmlp/20250828-142609/"
+        "Vanilla": "report/tabmlp/20250828-175633/",
+        "Sentiment": "report/tabmlp/20250828-180127/"
     },
     "Transformer": {
-        "Vanilla": "report/transformer/20250828-142344/",
-        "Sentiment": "report/transformer/20250828-142406/"
+        "Vanilla": "report/transformer/20250828-173418/",
+        "Sentiment": "report/transformer/20250828-174003/"
     },
     "GRU": {
-        "Vanilla": "report/gru/20250828-142259/",
-        "Sentiment": "report/gru/20250828-142324/"
+        "Vanilla": "report/gru/20250828-172328/",
+        "Sentiment": "report/gru/20250828-172853/"
     }
 }

@@ -622,7 +622,7 @@ class Pipeline:
             help="Ticker(s) to train on (single stock or multiple tickers as a space-separated list, e.g., 'AAPL' or 'AAPL MSFT GOOGL')"
         )
         ap.add_argument(
-            "--sentiment-threshold", type=float, default=0.4,
+            "--sentiment-threshold", type=float, default=0.8,
             help="Threshold for absolute sentiment score to consider an article as having sentiment")
         ap.add_argument(
             "--market-tz", default="America/New_York")
@@ -633,11 +633,11 @@ class Pipeline:
         ap.add_argument(
             "--max-length", type=int, default=512, help="FinBERT tokenizer max_length")
         ap.add_argument(
-            "--lookback", type=int, default=14)
+            "--lookback", type=int, default=30)
         ap.add_argument(
             "--epochs", type=int, default=100)
         ap.add_argument(
-            "--patience", type=int, default=60)
+            "--patience", type=int, default=30)
         ap.add_argument(
             "--use-bodies", action="store_true",
             help="Include article bodies in sentiment analysis if available")
