@@ -42,6 +42,7 @@ def generate_reports():
                 "--scale-method", "minmax",
                 "--data-source", "kaggle",
                 "--model", model,
+                "--train",
                 "--sentiment-csv-path", sentiment_csv_path,
                 #"--predict-returns"
             ]
@@ -53,6 +54,7 @@ def generate_reports():
                 "--scale-method", "minmax",
                 "--data-source", "kaggle",
                 "--model", model,
+                "--train",
                 "--sentiment-csv-path", sentiment_csv_path,
                 #"--predict-returns"
             ]

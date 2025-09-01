@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import date
 from typing import List
-import pandas as pd
+import polars as pl
 
 from components.schema import Schema
 
@@ -18,6 +18,9 @@ class TradingCalendar:
     @property
     def days(self) -> List[date]:
         return self._days
+
+    def __len__(self) -> int:
+        return len(self.days)
 
     def next_trading_day(self, date_: date) -> date:
         idx = TradingCalendar._bisect_left(self._days, date_)
@@ -37,7 +40,8 @@ class TradingCalendar:
         return lo
 
     @staticmethod
-    def build_trading_calendar(prices_df_: pd.DataFrame, schema_: Schema) -> TradingCalendar:
-        dates = pd.to_datetime(prices_df_[schema_.price_date], errors="coerce").dt.date
-        unique_days = dates.dropna().unique().tolist()
+    def build_trading_calendar(prices_df_: pl.DataFrame, schema_: Schema) -> TradingCalendar:
+        unique_days = prices_df_.select(
+            pl.col(schema_.price_date).dt.date().unique().drop_nulls()
+        )["date"].to_list()
         return TradingCalendar(unique_days)

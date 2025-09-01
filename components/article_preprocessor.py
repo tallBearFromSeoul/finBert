@@ -1,5 +1,5 @@
 from datetime import date, time
-import pandas as pd
+import polars as pl
 import pytz
 
 from components.schema import Schema
@@ -17,27 +17,38 @@ class ArticlePreprocessor:
         hh, mm = map(int, settings_.market_close_str.split(":"))
         self.market_close = time(hour=hh, minute=mm)
 
-    def build_text(self, df_: pd.DataFrame) -> pd.Series:
-        title = df_[self.schema.article_title].fillna("").astype(str)
+    def build_text(self, df_: pl.DataFrame) -> pl.Series:
+        return df_.select(self.get_build_text_expr()).to_series()
+
+    def get_build_text_expr(self) -> pl.Expr:
+        title_col = pl.col(self.schema.article_title)
         if self.s.titles_only or self.schema.article_body is None:
-            text = title
+            text = title_col.fill_null("").cast(pl.String)
         else:
-            body = df_[self.schema.article_body].fillna("").astype(str)
-            text = (title + self.s.text_joiner + body).str.strip()
-        return text.str.replace(r"\s+", " ", regex=True)
+            body_col = pl.col(self.schema.article_body)
+            text = pl.concat_str([
+                title_col.fill_null("").cast(pl.String),
+                pl.lit(self.s.text_joiner),
+                body_col.fill_null("").cast(pl.String)
+            ]).str.strip_chars()
+        return text.str.replace_all(r"\s+", " ", literal=False)
 
-    def normalize_time_columns(self, df_: pd.DataFrame) -> pd.Series:
-        return ensure_utc(df_[self.schema.article_time])
-
-    def compute_trading_date(self, published_utc_: pd.Series) -> pd.Series:
-        local_ts = published_utc_.dt.tz_convert(self.market_tz)
-        after_close = local_ts.dt.time > self.market_close
-        candidate_date = local_ts.dt.date.where(~after_close, (local_ts + pd.Timedelta(days=1)).dt.date)
-        mapped = candidate_date.map(self._map_to_trading_day)
-        return pd.to_datetime(mapped)
+    def compute_trading_date(self, published_utc_: pl.Series) -> pl.Series:
+        temp_df = pl.DataFrame({"published_utc": published_utc_})
+        local_ts_expr = pl.col("published_utc").dt.convert_time_zone(self.market_tz.zone)
+        after_close_expr = local_ts_expr.dt.time() > pl.lit(self.market_close)
+        candidate_date_expr = (
+            pl.when(after_close_expr)
+            .then(local_ts_expr + pl.duration(days=1))
+            .otherwise(local_ts_expr)
+            .dt.date()
+        )
+        mapped_expr = candidate_date_expr.map_elements(lambda d: self._map_to_trading_day(d), return_dtype=pl.Date)
+        result = temp_df.select(mapped_expr).to_series()
+        return result
 
     def _map_to_trading_day(self, d_: date) -> date:
         return self.calendar.next_trading_day(d_)
 
-    def normalize_tickers(self, df_: pd.DataFrame) -> pd.Series:
-        return df_[self.schema.article_ticker].astype(str).str.strip()
+    def get_normalize_tickers_expr(self) -> pl.Expr:
+        return pl.col(self.schema.article_ticker).cast(pl.String).str.strip_chars()

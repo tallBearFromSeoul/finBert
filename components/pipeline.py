@@ -1,16 +1,19 @@
+from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.gofplots import qqplot
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from yfinance import Ticker
 import argparse
 import concurrent.futures
+import dask.dataframe as dd
 import json
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
+import polars as pl
 import os
 import torch
 
@@ -65,14 +68,15 @@ class Pipeline:
         start_date = pd.Timestamp(2010, 1, 1, tz='UTC') # Year, Month, Day, UTC timezone
         end_date = pd.Timestamp(2020, 1, 1, tz='UTC') # Align to paper's "up to 2019"
         # Load and filter the news DataFrame (once)
+        Logger.info(f"Loading and filtering news data from {args.data_source}...")
         article_df = Pipeline.load_and_filter_news(fnspid_csv_path, kaggle_csv_path, args.data_source, start_date, end_date, args.use_bodies)
-        Logger.info(f"Loaded news dataframe with columns={list(article_df.columns)} shape={article_df.shape}.")
+        Logger.info(f"Loaded news dataframe with columns={list(article_df.columns)}.")
         # Schema
         schema = Schema(
             article_ticker="stock",
             article_time="date",
             article_title="title",
-            article_body="body" if "body" in article_df.columns else None,
+            article_body="body" if args.use_bodies else None,
             price_date="date",
             price_open="open",
             price_high="high",
@@ -94,8 +98,10 @@ class Pipeline:
         sentiment_generator = SentimentGenerator(
             tickers, data_paths, settings, schema, sentiment_csv_path_in, article_df,
             start_date, end_date, (out_root / args.fine_tune_dir) if args.fine_tune else None)
-        self.train(tickers, sentiment_generator.daily_sentiment, prices_dir, schema,
-                   start_date, end_date, args, out_root, saved_root, eval_json_path, load_dir)
+        if args.train:
+            self.train(tickers, sentiment_generator.daily_sentiment, prices_dir, schema,
+                    start_date, end_date, args, out_root, saved_root, eval_json_path, load_dir)
+
     @staticmethod
     def train(
         tickers_: List[str], daily_sentiment_: pd.DataFrame, prices_dir_: Path,
@@ -540,49 +546,80 @@ class Pipeline:
         return tickers_json["tickers"]
 
     @staticmethod
-    def load_fnspid_news_(fnspid_news_: str, use_bodies_: bool) -> pd.DataFrame:
+    def load_fnspid_news_(fnspid_news_: Union[str, Path], use_bodies_: bool) -> pl.LazyFrame:
         usecols = ["Date", "Article_title", "Stock_symbol"]
         rename = {"Article_title": "title", "Stock_symbol": "stock", "Date": "date"}
-        if use_bodies_:
-            usecols.append("Article_content")
-            rename["Article_content"] = "body"
         dtypes = {
-            "Article_title": str,
-            "Stock_symbol": str,
-            "Article_content": str if use_bodies_ else None
+            "Date": pl.Utf8,
+            "Article_title": pl.Utf8,
+            "Stock_symbol": pl.Utf8,
         }
-        article_df = pd.read_csv(
-            fnspid_news_,
-            usecols=usecols,
-            dtype={k: v for k, v in dtypes.items() if v is not None},
-            parse_dates=["Date"],
-            date_format="%Y-%m-%d"
-        )
-        return article_df.rename(columns=rename)
-
-    @staticmethod
-    def load_kaggle_news(kaggle_news_: str, use_bodies_: bool) -> pd.DataFrame:
-        usecols = ["title", "date", "stock"]
-        article_df = pd.read_csv(
-            kaggle_news_,
-            usecols=usecols,
-            parse_dates=["date"]
-        )
+        additional_cols = []
         if use_bodies_:
-            Logger.warning("No body column found in Kaggle CSV; falling back to titles only.")
+            additional_cols = ["Article", "Lsa_summary", "Luhn_summary", "Textrank_summary", "Lexrank_summary"]
+            usecols.extend(additional_cols)
+            for col in additional_cols:
+                dtypes[col] = pl.Utf8
+
+        # Use Polars lazy loading
+        article_df = pl.scan_csv(
+            fnspid_news_,
+            has_header=True,
+            schema_overrides=dtypes,
+            try_parse_dates=False  # Parse manually later
+        ).select(pl.col(usecols))
+        Logger.info(f"Polars lazy dataframe schema:\n{article_df.schema=} {article_df.columns=}")
+        if use_bodies_:
+            # Concatenate body columns in lazy mode
+            article_df = article_df.with_columns(
+                pl.concat_str([pl.col(col) for col in additional_cols], separator=" ").alias("body")
+            ).drop(additional_cols)
+
+        # Rename columns
+        article_df = article_df.rename(rename)
         return article_df
 
     @staticmethod
-    def load_and_filter_news(fnspid_news_: str, kaggle_news_: str, data_source_: str,
-                            start_date_: pd.Timestamp, end_date_: pd.Timestamp, use_bodies_: bool) -> pd.DataFrame:
+    def load_kaggle_news(kaggle_news_: Union[str, Path], use_bodies_: bool) -> pl.LazyFrame:
+        usecols = ["title", "date", "stock"]
+        dtypes = {"title": pl.Utf8, "date": pl.Utf8, "stock": pl.Utf8}
+        article_df = pl.scan_csv(
+            kaggle_news_,
+            has_header=True,
+            schema_overrides=dtypes,
+            try_parse_dates=False
+        ).select(pl.col(usecols))
+        if use_bodies_:
+            Logger.warning("No body column found in Kaggle CSV; falling back to titles only.")
+            article_df = article_df.with_columns(pl.lit("").alias("body"))
+        return article_df
+
+    @staticmethod
+    def load_and_filter_news(fnspid_news_: Union[str, Path], kaggle_news_: Union[str, Path], data_source_: str,
+                             start_date_: pd.Timestamp, end_date_: pd.Timestamp, use_bodies_: bool) -> pl.LazyFrame:
         if data_source_ == "fnspid":
             article_df = Pipeline.load_fnspid_news_(fnspid_news_, use_bodies_)
+            Logger.info(f"Loaded FNSPID news lazy dataframe with columns={article_df.columns} {article_df.width=}.")
+            # Parse date to datetime with UTC time zone
+            article_df = article_df.with_columns(
+                pl.col("date").str.to_datetime(format="%Y-%m-%d %H:%M:%S %Z", strict=False, time_zone="UTC").alias("date")
+            )
+            Logger.info(f"Converted FNSPID 'date' column to datetime with UTC timezone. {pl.col('date').dt=}")
+            article_df = article_df.filter(
+                (pl.col("date") > pl.lit(start_date_)) & (pl.col("date") < pl.lit(end_date_))
+            ).drop_nulls(subset=["date"])
+            Logger.info(f"Filtered FNSPID news to date range {start_date_} - {end_date_}, resulting in lazy frame.")
         elif data_source_ == "kaggle":
             article_df = Pipeline.load_kaggle_news(kaggle_news_, use_bodies_)
+            article_df = article_df.with_columns(
+                pl.col("date").str.to_datetime(strict=False, time_zone="UTC").alias("date")
+            )
+            article_df = article_df.filter(
+                (pl.col("date") > pl.lit(start_date_)) & (pl.col("date") < pl.lit(end_date_))
+            ).drop_nulls(subset=["date"])
+            Logger.info(f"Filtered Kaggle news to date range {start_date_} - {end_date_}, resulting in lazy frame.")
         else:
             raise ValueError(f"Invalid data_source: {data_source_}. Choose 'fnspid' or 'kaggle'.")
-        article_df["date"] = pd.to_datetime(article_df["date"], errors="coerce", utc=True)
-        article_df = article_df[(article_df["date"] > start_date_) & (article_df["date"] < end_date_)].dropna(subset=["date"])
         return article_df
 
     @staticmethod
@@ -590,7 +627,7 @@ class Pipeline:
         runtime = datetime.now().strftime("%Y%m%d-%H%M%S")
         ap = argparse.ArgumentParser()
         ap.add_argument(
-            "--fnspid-csv-path", default="~/Projects/finBert/FNSPID/Stock_news/All_external.csv",
+            "--fnspid-csv-path", default="~/Projects/finBert/FNSPID/Stock_news/nasdaq_external_data.csv", #All_external.csv",
             help="FNSPID News CSV path")
         ap.add_argument(
             "--kaggle-csv-path", default="~/Projects/finBert/kaggle/analyst_ratings_processed.csv",
@@ -611,6 +648,9 @@ class Pipeline:
         ap.add_argument(
             "--fine-tune", action="store_true",
             help="Fine-tune FinBERT with NSI labels before scoring")
+        ap.add_argument(
+            "--train", action="store_true", help="Train the predictor model"
+        )
         ap.add_argument(
             "--data-source", default="kaggle", choices=["fnspid", "kaggle"],
             help="Data source: 'fnspid', 'kaggle'")
