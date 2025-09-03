@@ -31,7 +31,8 @@ def generate_reports():
     model_map = {"gru": "GRU", "transformer": "Transformer", "finbert-transformer": "Transformer",
                  "rnn": "RNN", "lstm": "LSTM", "tabmlp": "TabMLP"}
     data_sources = {"RNN": {}, "LSTM": {}, "TabMLP": {}, "Transformer": {}, "GRU": {}}
-    sentiment_csv_path = "output/20250823-140342/sentiment_daily.csv"
+    sentiment_csv_path = "output/20250902-234959/sentiment_daily.csv"
+    #"output/20250823-140342/sentiment_daily.csv"
     for model in models:
         base_model = model.replace("finbert-", "") if "finbert-" in model else model
         variant = "Sentiment" if "finbert-" in model else "Vanilla"
@@ -40,7 +41,7 @@ def generate_reports():
                 "python3", "-m", "components.pipeline",
                 "--ticker", "all-tickers",
                 "--scale-method", "minmax",
-                "--data-source", "kaggle",
+                "--data-source", "fnspid",#"kaggle",
                 "--model", model,
                 "--train",
                 "--sentiment-csv-path", sentiment_csv_path,
@@ -52,7 +53,7 @@ def generate_reports():
                 "--ticker"
             ] + [str(ticker) for ticker in tickers] + [  # Pass tickers as separate arguments
                 "--scale-method", "minmax",
-                "--data-source", "kaggle",
+                "--data-source", "fnspid",#"kaggle",
                 "--model", model,
                 "--train",
                 "--sentiment-csv-path", sentiment_csv_path,

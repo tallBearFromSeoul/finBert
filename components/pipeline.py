@@ -97,10 +97,10 @@ class Pipeline:
         data_paths = DataPaths(fnspid_csv_path, kaggle_csv_path, prices_dir, out_sentiment_csv)
         sentiment_generator = SentimentGenerator(
             tickers, data_paths, settings, schema, sentiment_csv_path_in, article_df,
-            start_date, end_date, (out_root / args.fine_tune_dir) if args.fine_tune else None)
+            start_date, end_date, (out_root / args.fine_tune_dir), args.fine_tune_load_path)
         if args.train:
-            self.train(tickers, sentiment_generator.daily_sentiment, prices_dir, schema,
-                    start_date, end_date, args, out_root, saved_root, eval_json_path, load_dir)
+            self.train(tickers, sentiment_generator.daily_sentiment.to_pandas(), prices_dir, schema,
+                       start_date, end_date, args, out_root, saved_root, eval_json_path, load_dir)
 
     @staticmethod
     def train(
@@ -234,7 +234,7 @@ class Pipeline:
         # Visualize sentiment (full series)
         sentiment_scores = df_joined['SentimentScore'].values
         full_dates = df_joined['trading_date'].values
-        Pipeline.visualize_sentiment(sentiment_scores, full_dates, ticker, out_root_, tickers_, ticker_joined_lengths)
+        Pipeline.visualize_sentiment(sentiment_scores, full_dates, ticker, out_root_, tickers_, ticker_joined_lengths, args_.sentiment_threshold)
         Logger.info(
             f"[{ticker}] Test (price) MSE={metrics['test_MSE']:.9f} | MAE={metrics['test_MAE']:.9f} | RMSE={metrics['test_RMSE']:.9f} "
             f"(scaled MSE={metrics['test_MSE_scaled']:.9f})"
@@ -302,12 +302,12 @@ class Pipeline:
     @staticmethod
     def visualize_sentiment(sentiment_scores_: np.ndarray, dates_: np.ndarray,
                             ticker_: str, out_root_: Path, tickers_: List[str],
-                            ticker_lengths_: List[int]):
+                            ticker_lengths_: List[int], sentiment_threshold_: float):
         """
         Visualize daily sentiment scores over time and save as PNG.
         """
         plot_dir = ensure_dir(out_root_ / "plots")
-        fig, ax = plt.subplots(figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(20, 10))
         colors = plt.cm.tab10(np.linspace(0, 1, len(tickers_)))
         cum_row = 0
         for i, tick in enumerate(tickers_):
@@ -317,13 +317,16 @@ class Pipeline:
             end_j = end_row
             if start_j < end_j:
                 color = colors[i]
-                mask = ~np.isnan(sentiment_scores_[start_j:end_j])
-                ax.scatter(dates_[start_j:end_j][mask], sentiment_scores_[start_j:end_j][mask], color=color, label=f'Sentiment {tick}')
+                scores_slice = sentiment_scores_[start_j:end_j]
+                dates_slice = dates_[start_j:end_j]
+                mask = ~np.isnan(scores_slice) & (np.abs(scores_slice) > sentiment_threshold_)
+                ax.scatter(dates_slice[mask], scores_slice[mask], color=color, label=f'Sentiment {tick}', s=20)
             cum_row = end_row
         ax.set_title(f'{ticker_} Daily Sentiment')
         ax.set_xlabel('Date')
         ax.set_ylabel('Sentiment Score')
         ax.legend()
+        ax.grid(True)
         plt.gcf().autofmt_xdate()
         plt.savefig(plot_dir / f"{ticker_}_sentiment.png")
         plt.close()
@@ -434,7 +437,7 @@ class Pipeline:
         # Row 3, Col 1: Histogram of All Residuals
         ax_hist_all = fig.add_subplot(gs[3, 1])
         if len(residuals) > 0:
-            num_bins_all = max(10, int(np.sqrt(len(residuals))))
+            num_bins_all = 100
             ax_hist_all.hist(residuals, bins=num_bins_all, color='purple', alpha=0.7)
         ax_hist_all.set_title('Histogram of All Residuals')
         ax_hist_all.set_xlabel('Residuals')
@@ -457,7 +460,7 @@ class Pipeline:
         # Row 5, Col 1: Histogram of Train Residuals
         ax_hist_train = fig.add_subplot(gs[5, 1])
         if len(train_idx) > 0:
-            num_bins_train = max(10, int(np.sqrt(len(train_idx))))
+            num_bins_train = 100
             ax_hist_train.hist(residuals[train_mask], bins=num_bins_train, color='blue', alpha=0.7)
         ax_hist_train.set_title('Histogram of Train Residuals')
         ax_hist_train.set_xlabel('Residuals')
@@ -480,7 +483,7 @@ class Pipeline:
         # Row 7, Col 1: Histogram of Val Residuals
         ax_hist_val = fig.add_subplot(gs[7, 1])
         if len(val_idx) > 0:
-            num_bins_val = max(10, int(np.sqrt(len(val_idx))))
+            num_bins_val = 100
             ax_hist_val.hist(residuals[val_mask], bins=num_bins_val, color='green', alpha=0.7)
         ax_hist_val.set_title('Histogram of Val Residuals')
         ax_hist_val.set_xlabel('Residuals')
@@ -503,7 +506,7 @@ class Pipeline:
         # Row 9, Col 1: Histogram of Test Residuals
         ax_hist_test = fig.add_subplot(gs[9, 1])
         if len(test_idx) > 0:
-            num_bins_test = max(10, int(np.sqrt(len(test_idx))))
+            num_bins_test = 100
             ax_hist_test.hist(residuals[test_mask], bins=num_bins_test, color='red', alpha=0.7)
         ax_hist_test.set_title('Histogram of Test Residuals')
         ax_hist_test.set_xlabel('Residuals')
@@ -646,8 +649,8 @@ class Pipeline:
             "--fine-tune-dir", default="finetuned_finbert",
             help="Fine-tune FinBERT store path")
         ap.add_argument(
-            "--fine-tune", action="store_true",
-            help="Fine-tune FinBERT with NSI labels before scoring")
+            "--fine-tune-load-path", default=None,
+            help="Fine-tune FinBERT load path")
         ap.add_argument(
             "--train", action="store_true", help="Train the predictor model"
         )

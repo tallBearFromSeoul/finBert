@@ -59,7 +59,7 @@ class SequenceDataset(Dataset):
         self.y = df_[target_col_].values.astype(np.float32)
         self.valid_indices = valid_indices
         self.use_sentiment_in_features = use_sentiment_in_features_
-        Logger.info(f"{len(self.valid_indices)=} out of {len(df_)=} samples are valid for lookback={lookback_} with sentiment_col={sentiment_col_}")
+        Logger.info(f"{len(self.valid_indices)=} out of {len(df_)=} samples are valid for lookback={lookback_} with sentiment_col={sentiment_col_} {use_sentiment_in_features_=}")
         self.lookback = lookback_
 
     def __len__(self):

@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification,
                           DataCollatorWithPadding, Trainer, TrainingArguments, pipeline)
 
-from typing import List
+from typing import List, Optional
 import math
 import polars as pl
 import torch
@@ -116,7 +116,7 @@ class FinBertScorer:
 
     @staticmethod
     def fine_tune_finbert(news_df: pl.LazyFrame, prices_df: pl.DataFrame, schema: Schema, s: Settings,
-                          fine_tune_path_: Path):
+                          fine_tune_path_: Path, fine_tune_load_path_: Optional[Path]):
         # Compute NSI per day (small DataFrame)
         nsi_df = FinBertScorer.compute_nsi(prices_df, schema)
         Logger.info(f"Computed NSI for {len(nsi_df)} trading days.")
@@ -148,8 +148,11 @@ class FinBertScorer:
         labeled_lazy.sink_parquet(temp_file, compression='zstd', compression_level=10, maintain_order=False)
         Logger.info(f"Saved labeled data to temporary file: {temp_file}")
 
-        # Load as streaming dataset
-        dataset = load_dataset("parquet", data_files=str(temp_file), streaming=True)["train"]
+        # Load as non-streaming dataset (remove streaming=True)
+        dataset = load_dataset("parquet", data_files=str(temp_file))["train"]
+
+        # Split into train and test (e.g., 80/20 split)
+        split_dataset = dataset.train_test_split(test_size=0.2, seed=42)
 
         # Load tokenizer and model
         model_id = "ProsusAI/finbert"
@@ -160,28 +163,39 @@ class FinBertScorer:
         def tokenize_function(examples):
             return tokenizer(examples["text"], truncation=True, max_length=s.max_length)
 
-        # Apply tokenization (streaming)
-        tokenized_dataset = dataset.map(tokenize_function, batched=True, remove_columns=["text"])
-        tokenized_dataset = tokenized_dataset.with_format("torch")
+        # Apply tokenization (batched for efficiency)
+        tokenized_train = split_dataset['train'].map(tokenize_function, batched=True, remove_columns=["text"])
+        tokenized_eval = split_dataset['test'].map(tokenize_function, batched=True, remove_columns=["text"])
+
+        # Set format to torch
+        tokenized_train = tokenized_train.with_format("torch")
+        tokenized_eval = tokenized_eval.with_format("torch")
 
         # Trainer setup
         training_args = TrainingArguments(
-            output_dir="./finbert_finetuned",
+            output_dir=str(fine_tune_path_ / "finetuned_model_raw"),
             num_train_epochs=3,
             per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,  # Add this for eval batch size
             learning_rate=2e-5,
             weight_decay=0.01,
-            save_strategy="no",
-            load_best_model_at_end=False,
+            eval_steps=500,  # Evaluate every 500 steps
+            save_strategy="steps",
+            eval_strategy="steps",
+            save_steps=500,
+            load_best_model_at_end=True,
+            metric_for_best_model="eval_loss",  # Optional: Use eval loss to select best model
         )
-        # Calculate and set max_steps based on num_examples
-        steps_per_epoch = math.ceil(num_examples / training_args.per_device_train_batch_size)
+
+        # Calculate and set max_steps based on train examples
+        steps_per_epoch = math.ceil(len(tokenized_train) / training_args.per_device_train_batch_size)
         training_args.max_steps = steps_per_epoch * training_args.num_train_epochs
 
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=tokenized_dataset,  # Streaming IterableDataset
+            train_dataset=tokenized_train,
+            eval_dataset=tokenized_eval,  # Add this
             data_collator=DataCollatorWithPadding(tokenizer),
         )
         trainer.train()

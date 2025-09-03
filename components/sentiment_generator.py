@@ -1,8 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from typing import List, Optional
 import polars as pl
+
 from components.article_preprocessor import ArticlePreprocessor
 from components.finbert_scorer import FinBertScorer
 from components.data_paths import DataPaths
@@ -14,7 +16,8 @@ from utils.logger import Logger
 class SentimentGenerator:
     def __init__(self, tickers_: List[str], data_paths_: DataPaths, settings_: Settings,
                  schema_: Schema, sentiment_csv_path_in_: Optional[Path], article_df_: pl.LazyFrame,
-                 start_date_: datetime, end_date_: datetime, fine_tune_path_: Optional[Path]):
+                 start_date_: datetime, end_date_: datetime,
+                 fine_tune_path_: Path, fine_tune_load_path_: Optional[Path]):
         self.tickers: List[str] = tickers_
         self.data_paths: DataPaths = data_paths_
         self.settings: Settings = settings_
@@ -23,7 +26,8 @@ class SentimentGenerator:
         self.article_df: pl.LazyFrame = article_df_
         self.start_date: datetime = start_date_
         self.end_date: datetime = end_date_
-        self.fine_tune_path: Optional[Path] = fine_tune_path_
+        self.fine_tune_path: Path = fine_tune_path_
+        self.fine_tune_load_path: Optional[Path] = fine_tune_load_path_
         Logger.info(f"Initializing SentimentGenerator with {len(self.tickers)} tickers : running load_or_generate()")
         self._load_or_generate()
 
@@ -56,7 +60,7 @@ class SentimentGenerator:
         )
         self.daily_sentiment = SentimentGenerator._generate_daily_sentiment(
             self.article_df, prices_calendar_df, self.data_paths, self.settings,
-            self.schema, self.fine_tune_path
+            self.schema, self.fine_tune_path, self.fine_tune_load_path
         )
 
     def _load(self) -> None:
@@ -69,8 +73,8 @@ class SentimentGenerator:
 
     @staticmethod
     def _generate_daily_sentiment(article_df_: pl.LazyFrame, prices_df_: pl.DataFrame,
-                                data_paths_: DataPaths, settings_: Settings, schema_: Schema,
-                                fine_tune_path_: Optional[Path]) -> pl.DataFrame:
+                                  data_paths_: DataPaths, settings_: Settings, schema_: Schema,
+                                  fine_tune_path_: Path, fine_tune_load_path_: Optional[Path]) -> pl.DataFrame:
         calendar = TradingCalendar.build_trading_calendar(prices_df_, schema_)
         Logger.info(f"Built trading calendar with {len(calendar)} days.")
         Logger.info(f"settings: {settings_}\nSchema: {schema_}\nDataPaths: {data_paths_}")
@@ -129,29 +133,39 @@ class SentimentGenerator:
         # For fine-tuning (use lazy frame for streaming)
         model = None
         tokenizer = None
-        if fine_tune_path_ is not None:
+        if fine_tune_load_path_ is None:
             Logger.info(f"Fine-tuning FinBERT with NSI labels on full dataset (streaming mode).")
             model, tokenizer = FinBertScorer.fine_tune_finbert(
-                article_df_, prices_df_, schema_, settings_, fine_tune_path_
+                article_df_, prices_df_, schema_, settings_, fine_tune_path_, fine_tune_load_path_
             )
             Logger.info("Fine-tuning complete.")
             scorer = FinBertScorer(settings_.batch_size, settings_.max_length, model, tokenizer)
             Logger.info("Scoring articles with fine-tuned FinBERT.")
         else:
-            scorer = FinBertScorer(settings_.batch_size, settings_.max_length)
-            Logger.info("Scoring articles with pre-trained FinBERT.")
+            Logger.info(f"Loading fine-tuned FinBERT from {fine_tune_load_path_}.")
+            model = AutoModelForSequenceClassification.from_pretrained(fine_tune_load_path_)
+            tokenizer = AutoTokenizer.from_pretrained(fine_tune_load_path_)
+            scorer = FinBertScorer(settings_.batch_size, settings_.max_length, model, tokenizer)
+            Logger.info("Scoring articles with loaded fine-tuned FinBERT.")
 
         # Score texts (requires collecting in batches due to FinBertScorer)
-        def score_texts_in_batches(lazy_df: pl.LazyFrame, batch_size: int = 10000) -> pl.DataFrame:
+        def score_texts_in_batches(lazy_df: pl.LazyFrame, batch_size: int = 2**15) -> pl.DataFrame:
             score_dfs = []
             offset = 0
             while True:
                 batch_df = lazy_df.slice(offset, batch_size).collect(streaming=True)
                 if batch_df.is_empty():
                     break
+                # Compute trading_date on the small batch (fast, as it's eager and limited size)
+                batch_df = batch_df.with_columns(
+                    pl.col("published_utc").map_batches(
+                        lambda x: article_preprocessor.compute_trading_date(x),
+                        return_dtype=pl.Date
+                    ).alias("trading_date")
+                )
                 texts = batch_df["text"].to_list()
                 scores = scorer.score_texts(texts)
-                score_df = scores.hstack(batch_df.select(["ticker", "published_utc", "trading_date"]))
+                score_df = scores.hstack(batch_df.select([ticker_col, "published_utc", "trading_date"]))
                 score_dfs.append(score_df)
                 offset += len(batch_df)
             if not score_dfs:
