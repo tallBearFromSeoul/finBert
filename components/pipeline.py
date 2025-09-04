@@ -334,8 +334,8 @@ class Pipeline:
 
     @staticmethod
     def visualize_full_prediction(predictions_: Dict[str, np.ndarray],
-                                target_type_: str, ticker_: str, model_: str, out_root_: Path,
-                                val_start_date_, test_start_date_, tickers_: List[str]):
+                                  target_type_: str, ticker_: str, model_: str, out_root_: Path,
+                                  val_start_date_, test_start_date_, tickers_: List[str]):
         """
         Visualize stitched true vs predicted values for train+val+test and save as PNG.
         Extended to include comprehensive regression diagnostic plots in subplots.

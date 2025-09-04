@@ -33,6 +33,7 @@ def generate_reports():
     data_sources = {"RNN": {}, "LSTM": {}, "TabMLP": {}, "Transformer": {}, "GRU": {}}
     sentiment_csv_path = "output/20250902-234959/sentiment_daily.csv"
     #"output/20250823-140342/sentiment_daily.csv"
+    sentiment_threshold = "0.8"
     for model in models:
         base_model = model.replace("finbert-", "") if "finbert-" in model else model
         variant = "Sentiment" if "finbert-" in model else "Vanilla"
@@ -45,7 +46,8 @@ def generate_reports():
                 "--model", model,
                 "--train",
                 "--sentiment-csv-path", sentiment_csv_path,
-                #"--predict-returns"
+                "--sentiment-threshold", sentiment_threshold,
+                "--predict-returns"
             ]
         else:
             cmd = [
@@ -57,7 +59,8 @@ def generate_reports():
                 "--model", model,
                 "--train",
                 "--sentiment-csv-path", sentiment_csv_path,
-                #"--predict-returns"
+                "--sentiment-threshold", sentiment_threshold,
+                "--predict-returns"
             ]
         Logger.info(f"Running command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True)
