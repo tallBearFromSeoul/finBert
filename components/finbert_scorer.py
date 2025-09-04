@@ -115,15 +115,13 @@ class FinBertScorer:
         return prices.select(["trading_date", "ticker", "NSI"])
 
     @staticmethod
-    def fine_tune_finbert(news_df: pl.LazyFrame, prices_df: pl.DataFrame, schema: Schema, s: Settings,
-                          fine_tune_path_: Path, fine_tune_load_path_: Optional[Path]):
+    def fine_tune_finbert(news_df: pl.LazyFrame, prices_df: pl.DataFrame,
+                          schema: Schema, s: Settings, fine_tune_path_: Path):
         # Compute NSI per day (small DataFrame)
         nsi_df = FinBertScorer.compute_nsi(prices_df, schema)
         Logger.info(f"Computed NSI for {len(nsi_df)} trading days.")
 
         dupe_stats = nsi_df.group_by("trading_date").agg(pl.count().alias("tickers_per_date"))
-        Logger.info(f"Avg tickers per date: {dupe_stats['tickers_per_date'].mean()}")
-        Logger.info(f"Max tickers per date: {dupe_stats['tickers_per_date'].max()}")
 
         # Lazily join with NSI (use nsi_df.lazy() to match types), drop nulls, select needed columns
         labeled_lazy = news_df.join(
@@ -137,10 +135,6 @@ class FinBertScorer:
             pl.col("text"),
             pl.col("NSI").cast(pl.Int8).alias("label")  # 0-2 fits in Int8
         ])
-
-        # Compute num_examples cheaply before sinking (this is an aggregate, so no full materialization)
-        num_examples = labeled_lazy.select(pl.count().alias("count")).collect()["count"][0]
-        Logger.info(f"Number of labeled examples: {num_examples}")
 
         # Sink to temporary Parquet (streams without full collection)
         temp_file = Path("temp_labeled_data.parquet")
@@ -184,7 +178,7 @@ class FinBertScorer:
             eval_strategy="steps",
             save_steps=500,
             load_best_model_at_end=True,
-            metric_for_best_model="eval_loss",  # Optional: Use eval loss to select best model
+            metric_for_best_model="eval_loss",
         )
 
         # Calculate and set max_steps based on train examples
@@ -195,7 +189,7 @@ class FinBertScorer:
             model=model,
             args=training_args,
             train_dataset=tokenized_train,
-            eval_dataset=tokenized_eval,  # Add this
+            eval_dataset=tokenized_eval,
             data_collator=DataCollatorWithPadding(tokenizer),
         )
         trainer.train()

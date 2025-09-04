@@ -136,7 +136,7 @@ class SentimentGenerator:
         if fine_tune_load_path_ is None:
             Logger.info(f"Fine-tuning FinBERT with NSI labels on full dataset (streaming mode).")
             model, tokenizer = FinBertScorer.fine_tune_finbert(
-                article_df_, prices_df_, schema_, settings_, fine_tune_path_, fine_tune_load_path_
+                article_df_, prices_df_, schema_, settings_, fine_tune_path_
             )
             Logger.info("Fine-tuning complete.")
             scorer = FinBertScorer(settings_.batch_size, settings_.max_length, model, tokenizer)
